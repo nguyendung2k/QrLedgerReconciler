@@ -1,0 +1,355 @@
+<Window x:Class="QrLedgerReconciler.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:QrLedgerReconciler.Converters"
+        xmlns:behaviors="clr-namespace:QrLedgerReconciler.Behaviors"
+        Title="Đối chiếu Sổ cái - QR tĩnh HDBank"
+        SizeToContent="Height"
+        Width="460"
+        MinHeight="480"
+        MaxHeight="900"
+        MinWidth="440"
+        WindowStartupLocation="CenterScreen"
+        Background="#F3F4F6"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <!-- Converter -->
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Palette -->
+        <SolidColorBrush x:Key="AccentBrush" Color="#4F46E5"/>
+        <SolidColorBrush x:Key="AccentBrushHover" Color="#4338CA"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#16A34A"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#111827"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B7280"/>
+        <SolidColorBrush x:Key="TextTertiaryBrush" Color="#9CA3AF"/>
+        <SolidColorBrush x:Key="BorderBrushLight" Color="#E5E7EB"/>
+        <SolidColorBrush x:Key="InputBorderBrush" Color="#D1D5DB"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+
+        <!-- Styles -->
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushLight}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#000000" Opacity="0.05" BlurRadius="10" ShadowDepth="1" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="BaseButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                SnapsToDevicePixels="True">
+                            <Grid>
+                                <!-- Lớp phủ mờ tạo hiệu ứng hover/pressed mà không cần đổi màu nền gốc -->
+                                <Border x:Name="Overlay" CornerRadius="8" Background="Black" Opacity="0"/>
+                                <ContentPresenter x:Name="Content"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  RecognizesAccessKey="True"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Overlay" Property="Opacity" Value="0.10"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Overlay" Property="Opacity" Value="0.22"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.4"/>
+                                <Setter TargetName="Content" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Background" Value="#EEF0FF"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+        </Style>
+
+        <Style x:Key="WarningButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
+        </Style>
+
+        <!-- Nút điều khiển ca / in hoá đơn -->
+        <Style x:Key="PauseButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Background" Value="#F59E0B"/>
+        </Style>
+
+        <Style x:Key="ResumeButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+        </Style>
+
+        <Style x:Key="StopButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+        </Style>
+
+        <Style x:Key="PrintButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Background" Value="#374151"/>
+        </Style>
+
+        <!-- Hàng kết quả dạng nhãn : giá trị, gọn hơn 3 card riêng lẻ -->
+        <Style x:Key="ResultLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ResultValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- 0: Tiêu đề -->
+                <RowDefinition Height="14"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 2: Đăng nhập -->
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 4: Ngày -->
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 6: Mã khách hàng -->
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 8: Buttons chính -->
+                <RowDefinition Height="6"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 10: Buttons điều khiển in -->
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 12: Progress -->
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 14: Kết quả — Auto: không chiếm chỗ khi chưa có kết quả -->
+            </Grid.RowDefinitions>
+
+            <!-- Tiêu đề -->
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="Đối chiếu Sổ cái &amp; QR tĩnh HDBank"
+                           FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="Tài khoản 112716  ·  Bán hàng thanh toán QR Code tĩnh"
+                           Margin="0,3,0,0" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+            </StackPanel>
+
+            <!-- Đăng nhập -->
+            <Border Grid.Row="2" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Tài khoản EGAS" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource ModernTextBox}" Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Mật khẩu EGAS" Style="{StaticResource FieldLabel}"/>
+                        <PasswordBox x:Name="PasswordBox"
+                 Style="{StaticResource ModernPasswordBox}"
+                 behaviors:PasswordBoxBehavior.Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Ngày -->
+            <Border Grid.Row="4" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Từ ngày" Style="{StaticResource FieldLabel}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Style="{StaticResource ModernTextBox}"
+                                     Text="{Binding FromDate, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Định dạng: dd/MM/yyyy HH:mm — ví dụ 17/07/2026 08:00"/>
+
+                        </Grid>
+                        <TextBlock Text="dd/MM/yyyy HH:mm" Margin="2,4,0,0" FontSize="10"
+                                   Foreground="{StaticResource TextTertiaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Đến ngày" Style="{StaticResource FieldLabel}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Style="{StaticResource ModernTextBox}"
+                                     Text="{Binding ToDate, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Định dạng: dd/MM/yyyy HH:mm — ví dụ 17/07/2026 23:59"/>
+                        </Grid>
+                        <TextBlock Text="dd/MM/yyyy HH:mm" Margin="2,4,0,0" FontSize="10"
+                                   Foreground="{StaticResource TextTertiaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Mã khách hàng -->
+            <Border Grid.Row="6" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Mã khách hàng công nợ" Style="{StaticResource FieldLabel}"/>
+                    <TextBox x:Name="CustomerCodeTextBox"
+                             Style="{StaticResource ModernTextBox}"
+                             Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Nhập mã khách hàng để tra cứu / in hoá đơn công nợ"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Buttons chính -->
+            <UniformGrid Grid.Row="8" Rows="1" Columns="4">
+                <Button Content="Lấy Sổ cái" Style="{StaticResource SecondaryButton}" Command="{Binding GetLedgerCommand}"/>
+                <Button Content="Lấy QR" Style="{StaticResource SecondaryButton}" Command="{Binding GetQrCommand}"/>
+                <Button Content="Đối chiếu" Style="{StaticResource PrimaryButton}" Command="{Binding RunReconcileCommand}"/>
+                <Button Content="Clear ca" Margin="0" Style="{StaticResource WarningButton}" Command="{Binding ClearShiftCommand}"/>
+            </UniformGrid>
+
+            <!-- Buttons điều khiển in hoá đơn công nợ -->
+            <UniformGrid Grid.Row="10" Rows="1" Columns="4">
+                <Button Content="In công nợ" Style="{StaticResource PrintButton}"
+                        Command="{Binding PrintDebtInvoiceCommand}"
+                        CommandParameter="{Binding Text, ElementName=CustomerCodeTextBox}"/>
+                <Button Content="Tạm dừng" Style="{StaticResource PauseButton}" Command="{Binding PauseCommand}"/>
+                <Button Content="Tiếp tục" Style="{StaticResource ResumeButton}" Command="{Binding ResumeCommand}"/>
+                <Button Content="Kết thúc" Margin="0" Style="{StaticResource StopButton}" Command="{Binding StopCommand}"/>
+            </UniformGrid>
+
+            <!-- Progress -->
+            <StackPanel Grid.Row="12" Orientation="Horizontal" VerticalAlignment="Center">
+                <ProgressBar Width="150" Height="5" IsIndeterminate="True"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
+                             Foreground="{StaticResource AccentBrush}" Background="#E5E7EB"/>
+                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="11.5"
+                           Text="{Binding StatusText}" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Kết quả đối chiếu - chỉ hiển thị (và chỉ chiếm chỗ) khi có dữ liệu -->
+            <Border Grid.Row="14" Style="{StaticResource Card}" Margin="0"
+                    Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <TextBlock Text="Kết quả đối chiếu" Style="{StaticResource SectionTitle}"/>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Sổ cái" Style="{StaticResource ResultLabel}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding LedgerText}" Style="{StaticResource ResultValue}"/>
+                    </Grid>
+
+                    <Grid Margin="0,4,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="QR HDBank" Style="{StaticResource ResultLabel}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding QrText}" Style="{StaticResource ResultValue}"/>
+                    </Grid>
+
+                    <Separator Margin="0,6,0,8" Background="{StaticResource BorderBrushLight}"/>
+
+                    <TextBlock Text="{Binding DifferenceText}" FontSize="16" FontWeight="Bold"
+                               Foreground="{Binding DifferenceColor}"/>
+
+                    <TextBlock Text="{Binding LogText}" Margin="0,8,0,0" FontSize="11.5"
+                               Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</Window>

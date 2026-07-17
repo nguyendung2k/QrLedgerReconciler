@@ -1,0 +1,171 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\services\\reconciliationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:services\\reconciliationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\services\\shiftinvoiceprocessor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:services\\shiftinvoiceprocessor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\views\\datetimepickerwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:views\\datetimepickerwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\views\\datetimepickerwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:views\\datetimepickerwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\services\\printcontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:services\\printcontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\services\\invoiceprintingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:services\\invoiceprintingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|c:\\users\\pc\\documents\\codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\qrledgerreconciler\\helpers\\printdialoghelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7543A8A-27E1-291C-DEFA-59E5E41C0248}|QrLedgerReconciler.csproj|solutionrelative:helpers\\printdialoghelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 6,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ReconciliationService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\ReconciliationService.cs",
+              "RelativeDocumentMoniker": "Services\\ReconciliationService.cs",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\ReconciliationService.cs",
+              "RelativeToolTip": "Services\\ReconciliationService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-17T08:57:19.398Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ShiftInvoiceProcessor.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\ShiftInvoiceProcessor.cs",
+              "RelativeDocumentMoniker": "Services\\ShiftInvoiceProcessor.cs",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\ShiftInvoiceProcessor.cs",
+              "RelativeToolTip": "Services\\ShiftInvoiceProcessor.cs",
+              "ViewState": "AgIAAEUAAAAAAAAAAAAowO8AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-17T07:47:56.831Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Views\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\MainWindow.xaml",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Views\\MainWindow.xaml",
+              "RelativeToolTip": "Views\\MainWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-07-17T04:29:30.973Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DateTimePickerWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Views\\DateTimePickerWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\DateTimePickerWindow.xaml",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Views\\DateTimePickerWindow.xaml",
+              "RelativeToolTip": "Views\\DateTimePickerWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-07-17T04:05:52.768Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "PrintControl.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\PrintControl.cs",
+              "RelativeDocumentMoniker": "Services\\PrintControl.cs",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\PrintControl.cs",
+              "RelativeToolTip": "Services\\PrintControl.cs",
+              "ViewState": "AgIAABkAAAAAAAAAAAAcwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-17T03:51:04.504Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "InvoicePrintingService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\InvoicePrintingService.cs",
+              "RelativeDocumentMoniker": "Services\\InvoicePrintingService.cs",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Services\\InvoicePrintingService.cs",
+              "RelativeToolTip": "Services\\InvoicePrintingService.cs",
+              "ViewState": "AgIAAHMAAAAAAAAAAAAgwAoBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-17T03:50:52.641Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MainViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\ViewModels\\MainViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\ViewModels\\MainViewModel.cs",
+              "RelativeToolTip": "ViewModels\\MainViewModel.cs",
+              "ViewState": "AgIAAIsAAAAAAAAAAAASwKkAAABPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-17T03:50:26.357Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "DateTimePickerWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Views\\DateTimePickerWindow.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\DateTimePickerWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Views\\DateTimePickerWindow.xaml.cs",
+              "RelativeToolTip": "Views\\DateTimePickerWindow.xaml.cs",
+              "ViewState": "AgIAACIAAAAAAAAAAAAIwDkAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-17T04:19:25.731Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "PrintDialogHelper.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Helpers\\PrintDialogHelper.cs",
+              "RelativeDocumentMoniker": "Helpers\\PrintDialogHelper.cs",
+              "ToolTip": "C:\\Users\\PC\\Documents\\Codex\\2026-07-10\\chrome-plugin-chrome-openai-bundled-2\\outputs\\QrLedgerReconciler\\Helpers\\PrintDialogHelper.cs",
+              "RelativeToolTip": "Helpers\\PrintDialogHelper.cs",
+              "ViewState": "AgIAABAAAAAAAAAAAAAgwBcAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-17T03:30:52.847Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

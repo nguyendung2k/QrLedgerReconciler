@@ -1,0 +1,10 @@
+<Application x:Class="QrLedgerReconciler.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:QrLedgerReconciler.Converters"
+             StartupUri="Views/MainWindow.xaml">
+
+    <Application.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Application.Resources>
+</Application>
