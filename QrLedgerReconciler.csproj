@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\..\..\..\Downloads\ShiftProductReportService.cs" Link="Services\ShiftProductReportService.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FlaUI.Core" Version="5.0.0" />
@@ -14,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="debug\" />
     <Folder Include="Resources\" />
   </ItemGroup>
 

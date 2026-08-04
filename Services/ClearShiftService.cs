@@ -139,7 +139,7 @@ public class ClearShiftService
     {
         status(actionName);
 
-        await ScrollToRightAsync(page);
+        //await ScrollToRightAsync(page);
 
         await page.GetByRole(AriaRole.Checkbox, new() { Name = actionName })
             .CheckAsync();
@@ -152,17 +152,17 @@ public class ClearShiftService
         status($"{actionName} xong");
     }
 
-    private static async Task ScrollToRightAsync(IPage page)
-    {
-        await page.EvaluateAsync(@"
-            () => {
-                const div = document.querySelector('.dxgvCSD');
+    //private static async Task ScrollToRightAsync(IPage page)
+    //{
+    //    await page.EvaluateAsync(@"
+    //        () => {
+    //            const div = document.querySelector('.dxgvCSD');
 
-                if (div) {
-                    div.scrollLeft = div.scrollWidth;
-                }
-            }");
-    }
+    //            if (div) {
+    //                div.scrollLeft = div.scrollWidth;
+    //            }
+    //        }");
+    //}
 
     private static async Task WaitForActionToFinishAsync(IPage page)
     {

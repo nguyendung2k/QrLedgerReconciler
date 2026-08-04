@@ -83,6 +83,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand PickFromDateCommand { get; }
     public ICommand PickToDateCommand { get; }
     public ICommand PrintDebtInvoiceCommand { get; }
+    public ICommand PrintShiftProductReportCommand { get; }
     public ICommand PauseCommand { get; }
     public ICommand ResumeCommand { get; }
     public ICommand StopCommand { get; }
@@ -109,6 +110,9 @@ public class MainViewModel : INotifyPropertyChanged
 
         // Không cho bấm "In hoá đơn công nợ" lần nữa khi đang in dở
         PrintDebtInvoiceCommand = new RelayCommand<string>(ExecutePrintDebtInvoices, _ => !IsPrinting);
+
+        // In "Bảng phân chia sản phẩm" theo ca — dùng chung nút Busy như Clear ca
+        PrintShiftProductReportCommand = new RelayCommand(ExecutePrintShiftProductReport);
 
         // Tạm dừng: chỉ bật khi đang in và chưa pause
         PauseCommand = new RelayCommand(ExecutePause, () => IsPrinting && !IsPrintPaused);
@@ -155,7 +159,23 @@ public class MainViewModel : INotifyPropertyChanged
         {
             await _service.ClearShiftAsync(req, s => StatusText = s);
             Log("Đã hoàn thành Clear sổ giao ca.");
-            _showMessage("Đã hoàn thành.");
+            _showMessage($"Đã hoàn thành. từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}");
+        });
+    }
+
+    private async void ExecutePrintShiftProductReport()
+    {
+        if (!TryGetRequest(out var req)) return;
+
+        if (_showConfirm("Xác nhận", $"Sẽ in Bảng phân chia sản phẩm cho tất cả ca từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}.\n\nTiếp tục?") != MessageBoxResult.Yes)
+            return;
+
+        await ExecuteWithBusyAsync("Đang in Bảng phân chia sản phẩm...", async req =>
+        {
+            var service = new ShiftProductReportService();
+            await service.RunAsync(req, s => StatusText = s);
+            Log("Đã hoàn thành in Bảng phân chia sản phẩm.");
+            _showMessage($"Đã hoàn thành in Bảng phân chia sản phẩm từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}");
         });
     }
 

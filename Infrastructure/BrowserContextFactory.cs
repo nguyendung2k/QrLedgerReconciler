@@ -37,7 +37,7 @@ internal static class BrowserContextFactory
         }
         finally
         {
-            await context.CloseAsync();
+            
         }
     }
 
