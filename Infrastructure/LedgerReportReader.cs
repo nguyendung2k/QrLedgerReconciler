@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QrLedgerReconciler.Models;
 
@@ -7,7 +6,7 @@ namespace QrLedgerReconciler.Infrastructure;
 
 internal static class LedgerReportReader
 {
-    private const string AccountCode = "112716";
+    private const string AccountDesc = "112716 - Bán hàng thanh toán QRCode tĩnh";
 
     public static async Task<decimal> GetTotalAsync(
         IBrowserContext context,
@@ -15,29 +14,31 @@ internal static class LedgerReportReader
     {
         var page = await context.NewPageAsync();
 
-        await page.GotoAsync($"{EgasEndpoints.BaseUrl}/RPT/RPT.aspx?id=GLBookBangKe");
+        var url =
+            $"{EgasEndpoints.BaseUrl}/RPT/RPT.aspx" +
+            $"?id=GLBookBangKe" +
+            $"&FROMDATE={Uri.EscapeDataString(request.From.ToString("d/M/yyyy", CultureInfo.InvariantCulture))}" +
+            $"&TODATE={Uri.EscapeDataString(request.To.ToString("d/M/yyyy HH:mm", CultureInfo.InvariantCulture))}" +
+            $"&ACCT={Uri.EscapeDataString(AccountDesc)}" +
+            $"&outputformat=1" +
+            $"&formison=1";
 
-        await page.Locator("input[name='FROMDATE']")
-            .FillAsync(request.From.ToString("d/M/yyyy HH:mm",
-                CultureInfo.InvariantCulture));
-
-        await page.Locator("input[name='TODATE']")
-            .FillAsync(request.To.ToString("d/M/yyyy HH:mm",
-                CultureInfo.InvariantCulture));
-
-        await page.Locator("input[name='ACCT']")
-            .FillAsync(AccountCode);
-
-        await page.Locator("img[title='Ctrl-Enter']")
-            .ClickAsync();
-
-        await page.WaitForURLAsync(
-            new Regex("formison=1", RegexOptions.IgnoreCase));
+        await page.GotoAsync(url);
 
         var row = page.Locator("tr")
             .Filter(new() { HasText = "TỔNG CỘNG" });
 
-        await row.WaitForAsync();
+        // Chờ nội dung dòng tổng thực sự có chữ số — dữ liệu load async,
+        // WaitForAsync() trả về ngay khi element tồn tại dù số chưa render.
+        await page.WaitForFunctionAsync(
+            @"() => {
+                const tr = document.querySelectorAll('tr');
+                for (const row of tr) {
+                    if (row.textContent.includes('TỔNG CỘNG') && /\d/.test(row.textContent))
+                        return true;
+                }
+                return false;
+            }");
 
         return MoneyParser.Parse(await row.InnerTextAsync());
     }

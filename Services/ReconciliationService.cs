@@ -1,3 +1,4 @@
+using Microsoft.Playwright;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
 using QrLedgerReconciler.Service;
@@ -39,11 +40,20 @@ public sealed class ReconciliationService
             status("Đang lấy tổng sổ cái...");
             var ledgerTotal = await LedgerReportReader.GetTotalAsync(context, request);
 
-            status("Đang tra soát QR tĩnh HDBank...");
-            var qrTotal = await QrPaymentReader.GetStaticQrTotalAsync(context, egas, request);
+            var qrTotal = await GetQrTotalAsync(context, egas, request, status);
 
             return new ReconciliationResult(ledgerTotal, qrTotal);
         });
+    }
+
+    private static Task<decimal> GetQrTotalAsync(
+        IBrowserContext context,
+        IPage page,
+        ReconciliationRequest request,
+        Action<string> status)
+    {
+        status("Đang tra soát QR tĩnh HDBank...");
+        return QrPaymentReader.GetStaticQrTotalAsync(context, page, request);
     }
 
     public Task<decimal> GetLedgerOnlyAsync(
@@ -73,8 +83,7 @@ public sealed class ReconciliationService
             status("Đang đăng nhập EGAS...");
             await EgasAuthenticator.LoginAsync(page, EgasEndpoints.BaseUrl, request);
 
-            status("Đang lấy dữ liệu QR...");
-            return await QrPaymentReader.GetStaticQrTotalAsync(context, page, request);
+            return await GetQrTotalAsync(context, page, request, status);
         });
     }
 

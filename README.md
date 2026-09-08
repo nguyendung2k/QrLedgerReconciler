@@ -6,7 +6,7 @@
 
 - .NET SDK 8 trở lên.
 - Có quyền truy cập mạng nội bộ EGAS và cổng HDBank.
-- Lần đầu chạy Playwright, cài Chromium bằng lệnh `pwsh bin/Debug/net8.0/playwright.ps1 install chromium`.
+- Đã cài Google Chrome (ứng dụng dùng trực tiếp Chrome qua `Channel = "chrome"`, không cần tải Chromium riêng của Playwright).
 
 ## Cấu hình an toàn
 
@@ -22,7 +22,6 @@ $env:EGAS_PASSWORD = "<mật khẩu>"
 ```powershell
 dotnet restore
 dotnet build
-pwsh bin/Debug/net8.0/playwright.ps1 install chromium
 dotnet run -- --from "6/7/2026 14:00" --to "7/7/2026 13:59"
 ```
 

@@ -20,6 +20,7 @@ internal static class BrowserContextFactory
         await using var browser = await playwright.Chromium.LaunchAsync(new()
         {
             Headless = false,
+            Channel = "chrome",
             SlowMo = BrowserSlowMoMs,
             Args = new[] { "--force-renderer-accessibility" , "--kiosk-printing" }
         });
