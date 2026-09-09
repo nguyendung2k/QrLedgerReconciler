@@ -1,28 +1,124 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
+
+    <!-- ========================================================= -->
+    <!-- APPLICATION                                               -->
+    <!-- ========================================================= -->
+
     <OutputType>WinExe</OutputType>
+
     <TargetFramework>net8.0-windows</TargetFramework>
+
     <UseWPF>true</UseWPF>
+
     <ImplicitUsings>enable</ImplicitUsings>
+
     <Nullable>enable</Nullable>
+
+
+    <!-- ========================================================= -->
+    <!-- WINDOWS / PLAYWRIGHT                                      -->
+    <!-- ========================================================= -->
+
+    <!-- Publish đúng Windows 64-bit -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+    <!-- Đóng gói .NET Runtime cùng ứng dụng -->
+    <SelfContained>true</SelfContained>
+
+    <!-- QUAN TRỌNG:
+         Không dùng SingleFile với Playwright -->
+    <PublishSingleFile>false</PublishSingleFile>
+
+    <!-- Không trim vì WPF + Playwright + FlaUI -->
+    <PublishTrimmed>false</PublishTrimmed>
+
+    <!-- Không cần ReadyToRun -->
+    <PublishReadyToRun>false</PublishReadyToRun>
+
+
+    <!-- ========================================================= -->
+    <!-- RELEASE                                                   -->
+    <!-- ========================================================= -->
+
+    <DebugType>None</DebugType>
+
+    <DebugSymbols>false</DebugSymbols>
+
+
+    <!-- ========================================================= -->
+    <!-- APPLICATION INFORMATION                                   -->
+    <!-- ========================================================= -->
+
+    <AssemblyName>HDBank_QR_Reconciler</AssemblyName>
+
+    <RootNamespace>QrLedgerReconciler</RootNamespace>
+
+    <Product>HDBank QR Reconciler</Product>
+
+    <Title>HDBank QR Reconciler</Title>
+
+    <Description>
+      Đối chiếu Sổ cái và QR tĩnh HDBank
+    </Description>
+
+    <Version>1.0.0</Version>
+
+    <FileVersion>1.0.0.0</FileVersion>
+
   </PropertyGroup>
-  <ItemGroup>
-  </ItemGroup>
+
+
+  <!-- =========================================================== -->
+  <!-- NUGET PACKAGES                                              -->
+  <!-- =========================================================== -->
 
   <ItemGroup>
-    <PackageReference Include="FlaUI.Core" Version="5.0.0" />
-    <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Playwright" Version="1.55.0" />
+
+    <!-- UI Automation -->
+    <PackageReference
+      Include="FlaUI.Core"
+      Version="5.0.0" />
+
+    <PackageReference
+      Include="FlaUI.UIA3"
+      Version="5.0.0" />
+
+    <!-- Browser Automation -->
+    <PackageReference
+      Include="Microsoft.Playwright"
+      Version="1.55.0" />
+
   </ItemGroup>
 
+
+  <!-- =========================================================== -->
+  <!-- FOLDERS                                                     -->
+  <!-- =========================================================== -->
+
   <ItemGroup>
+
     <Folder Include="debug\" />
+
     <Folder Include="Resources\" />
+
   </ItemGroup>
 
+
+  <!-- =========================================================== -->
+  <!-- XAML CODE-BEHIND                                            -->
+  <!-- =========================================================== -->
+
   <ItemGroup>
+
     <Compile Update="Views\DateTimePickerWindow.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+
   </ItemGroup>
+
+
 </Project>
