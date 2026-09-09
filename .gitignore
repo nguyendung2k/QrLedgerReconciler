@@ -1,4 +1,23 @@
+# Build
 bin/
 obj/
-playwright/.auth/
-appsettings.Development.json
+
+# Visual Studio
+.vs/
+
+# Publish
+publish/
+
+# Installer Output
+Installer/Output/
+
+# Playwright browsers
+playwright-browsers/
+ms-playwright/
+
+# Executable
+*.exe
+*.msi
+
+# Logs
+*.log
