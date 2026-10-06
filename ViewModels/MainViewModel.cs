@@ -272,8 +272,8 @@ public class MainViewModel : INotifyPropertyChanged
         if (!TryParseDate(FromDate, out var from)) return Fail("Ngày bắt đầu không đúng định dạng.");
         if (!TryParseDate(ToDate, out var to)) return Fail("Ngày kết thúc không đúng định dạng.");
         if (from >= to) return Fail("Ngày bắt đầu phải nhỏ hơn ngày kết thúc.");
-        if (string.IsNullOrWhiteSpace(UserName)) return Fail($"Nhập tài khoản EGAS. [DEBUG UserName='{UserName}']");
-        if (string.IsNullOrWhiteSpace(Password)) return Fail($"Nhập mật khẩu EGAS. [DEBUG Password len={Password?.Length ?? -1}]");
+        if (string.IsNullOrWhiteSpace(UserName)) return Fail("Nhập tài khoản EGAS.");
+        if (string.IsNullOrWhiteSpace(Password)) return Fail("Nhập mật khẩu EGAS.");
 
         request = new ReconciliationRequest(UserName.Trim(), Password, from, to);
         return true;
