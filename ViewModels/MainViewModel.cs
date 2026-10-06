@@ -25,8 +25,11 @@ public class MainViewModel : INotifyPropertyChanged
 
     public string FromDate { get; set; } = DefaultFromDate;
     public string ToDate { get; set; } = DefaultToDate;
-    public string UserName { get; set; } = "2112229";
-    public string Password { get; set; } = "vp8686";
+    private string _userName = string.Empty;
+    public string UserName { get => _userName; set => SetProperty(ref _userName, value); }
+
+    private string _password = string.Empty;
+    public string Password { get => _password; set => SetProperty(ref _password, value); }
 
     private bool _hasResults;
     public bool HasResults
@@ -269,8 +272,8 @@ public class MainViewModel : INotifyPropertyChanged
         if (!TryParseDate(FromDate, out var from)) return Fail("Ngày bắt đầu không đúng định dạng.");
         if (!TryParseDate(ToDate, out var to)) return Fail("Ngày kết thúc không đúng định dạng.");
         if (from >= to) return Fail("Ngày bắt đầu phải nhỏ hơn ngày kết thúc.");
-        if (string.IsNullOrWhiteSpace(UserName)) return Fail("Nhập tài khoản EGAS.");
-        if (string.IsNullOrWhiteSpace(Password)) return Fail("Nhập mật khẩu EGAS.");
+        if (string.IsNullOrWhiteSpace(UserName)) return Fail($"Nhập tài khoản EGAS. [DEBUG UserName='{UserName}']");
+        if (string.IsNullOrWhiteSpace(Password)) return Fail($"Nhập mật khẩu EGAS. [DEBUG Password len={Password?.Length ?? -1}]");
 
         request = new ReconciliationRequest(UserName.Trim(), Password, from, to);
         return true;

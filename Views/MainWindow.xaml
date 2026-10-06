@@ -232,7 +232,7 @@
                         <TextBlock Text="Mật khẩu EGAS" Style="{StaticResource FieldLabel}"/>
                         <PasswordBox x:Name="PasswordBox"
                  Style="{StaticResource ModernPasswordBox}"
-                 behaviors:PasswordBoxBehavior.Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                 PasswordChanged="PasswordBox_PasswordChanged"/>
                     </StackPanel>
                 </Grid>
             </Border>

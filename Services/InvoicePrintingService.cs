@@ -109,9 +109,10 @@ public class InvoicePrintingService
                     await frame.ClickAsync("input[value='Chọn mẫu in'], input.btn");
                     await frame.WaitForTimeoutAsync(100);
 
-                    // kiosk-printing => in thẳng, không có dialog. Trang tự
-                    // navigate về danh sách sau khi in — chờ đúng lúc đó.
-                    status("Đang in và chờ trang tự quay lại...");
+                    // kiosk-printing => in thẳng, không có hộp thoại để chọn tỉ lệ.
+                    // Nội dung được ép vừa khổ giấy để in đúng tỉ lệ mong muốn.
+                    status($"Đang in (vừa khổ 60%)...");
+                    await PrintLayout.ApplyAsync(frame.Locator("html"));
                     await frame.ClickAsync("input[value='Print']");
                     await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded,
                         new PageWaitForLoadStateOptions { Timeout = 2000 });

@@ -23,4 +23,10 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
 
     }
+
+    private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox box)
+            _viewModel.Password = box.Password;
+    }
 }

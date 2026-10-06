@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using QrLedgerReconciler.Helpers;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
 using System.Globalization;
@@ -153,10 +154,12 @@ public class ShiftProductReportService
         await page.Locator("text=BẢNG PHÂN CHIA SẢN PHẨM")
             .WaitForAsync(new() { Timeout = 10_000 });
 
-        // Nút in thật trên trang kết quả — dùng lại đúng cách click đã chạy
-        // ổn ở InvoicePrintingService.
+        // Nút in thật trên trang kết quả. --kiosk-printing => in thẳng, không có
+        // hộp thoại. Nội dung được ép vừa khổ giấy để đạt tỉ lệ mong muốn.
+        status($"Đang in (vừa khổ 60%)...");
+        await PrintLayout.ApplyAsync(page.Locator("html"));
+
         await page.ClickAsync("#printbtn, img[src*='Print2.gif']");
-        await page.WaitForTimeoutAsync(200);
         await page.WaitForTimeoutAsync(AfterPrintWaitMs);
 
         await page.CloseAsync();
