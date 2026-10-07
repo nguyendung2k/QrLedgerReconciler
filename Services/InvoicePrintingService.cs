@@ -94,7 +94,6 @@ public class InvoicePrintingService
 
                 // Click Print
                 await page.ClickAsync("#printbtn, img[src*='Print2.gif']");
-                await page.WaitForTimeoutAsync(200);
 
                 var frame = page.Frame("saveTranFrm");
                 if (frame == null)
@@ -107,7 +106,6 @@ public class InvoicePrintingService
                 if (frame != null)
                 {
                     await frame.ClickAsync("input[value='Chọn mẫu in'], input.btn");
-                    await frame.WaitForTimeoutAsync(100);
 
                     // Sau khi bấm "Chọn mẫu in", iframe saveTranFrm chuyển sang
                     // trang EINVPrint.aspx — chính là bản xem trước hoá đơn
@@ -137,7 +135,12 @@ public class InvoicePrintingService
                             // ảnh nền/QR chưa tải xong (lỗi hoá đơn thứ 2 trở lên).
                             await pdfPage.GotoAsync(eInvUrl,
                                 new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
-                            await pdfPage.WaitForTimeoutAsync(1000);
+
+                            // Chờ nội dung hoá đơn (table dữ liệu) đã dựng xong thì
+                            // sinh PDF ngay, thay vì chờ cố định 1000ms (nhanh hơn
+                            // khi trang tải nhanh, vẫn đủ an toàn vì chờ đúng phần tử).
+                            await pdfPage.WaitForSelectorAsync("table, .VATTEMP",
+                                new PageWaitForSelectorOptions { Timeout = 5000 });
 
                             // Ẩn các thành phần thừa KHÔNG thuộc bản in chuẩn:
                             //   1. Nút hành động Print / Close (input.btn).
@@ -196,7 +199,6 @@ body { margin: 0 auto !important; }
             }
 
             await page.BringToFrontAsync();
-            await page.WaitForTimeoutAsync(80);
         }
 
         status(control.IsStopped ? "=== ĐÃ DỪNG IN ===" : "=== HOÀN THÀNH IN TẤT CẢ ===");
@@ -214,13 +216,13 @@ body { margin: 0 auto !important; }
         var oldUrl = frame.Url;
         for (var t = 0; t < 100; t++)
         {
-            await page.WaitForTimeoutAsync(100);
+            await page.WaitForTimeoutAsync(50);
 
             var cur = page.Frame("saveTranFrm");
             if (cur != null && !string.IsNullOrEmpty(cur.Url) && cur.Url != oldUrl)
             {
                 // Chờ thêm một chút để trang mới dựng nội dung
-                await page.WaitForTimeoutAsync(800);
+                await page.WaitForTimeoutAsync(400);
                 return cur.Url;
             }
         }

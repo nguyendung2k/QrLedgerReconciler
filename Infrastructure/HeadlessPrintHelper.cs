@@ -95,7 +95,7 @@ internal static class HeadlessPrintHelper
             double width = page.Size.Width;
             double height = page.Size.Height;
 
-            const int targetDpi = 300;
+            const int targetDpi = 200;
             var destinationWidth = (uint)(width / 72.0 * targetDpi);
             var destinationHeight = (uint)(height / 72.0 * targetDpi);
 
