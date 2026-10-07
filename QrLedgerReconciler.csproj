@@ -42,7 +42,7 @@
          Không dùng SingleFile với Playwright -->
     <PublishSingleFile>false</PublishSingleFile>
 
-    <!-- Không trim vì WPF + Playwright + FlaUI -->
+    <!-- Không trim vì WPF + Playwright -->
     <PublishTrimmed>false</PublishTrimmed>
 
     <!-- Không cần ReadyToRun -->
@@ -86,15 +86,6 @@
   <!-- =========================================================== -->
 
   <ItemGroup>
-
-    <!-- UI Automation -->
-    <PackageReference
-      Include="FlaUI.Core"
-      Version="5.0.0" />
-
-    <PackageReference
-      Include="FlaUI.UIA3"
-      Version="5.0.0" />
 
     <!-- Browser Automation -->
     <PackageReference
