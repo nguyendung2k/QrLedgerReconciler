@@ -22,7 +22,7 @@ internal static class PrintLayout
     /// <summary>
     /// Tỉ lệ thu nhỏ mong muốn.
     /// </summary>
-    public const double Scale = 0.6;
+    public const double Scale = 1;
 
     /// <summary>
     /// Khổ giấy A4 thật: 210mm x 297mm.

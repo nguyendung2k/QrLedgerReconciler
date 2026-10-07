@@ -109,7 +109,7 @@ internal static class BrowserContextFactory
         return await playwright.Chromium.LaunchAsync(
             new BrowserTypeLaunchOptions
             {
-                Headless = false,
+                Headless = true,
 
                 // IMPORTANT:
                 // Use installed Google Chrome.
@@ -119,8 +119,7 @@ internal static class BrowserContextFactory
 
                 Args = new[]
                 {
-                    "--force-renderer-accessibility",
-                    "--kiosk-printing"
+                    "--force-renderer-accessibility"
                 }
             });
     }
@@ -162,7 +161,7 @@ internal static class BrowserContextFactory
         return await playwright.Chromium.LaunchAsync(
             new BrowserTypeLaunchOptions
             {
-                Headless = false,
+                Headless = true,
 
                 // No Channel here:
                 // this launches the bundled Playwright Chromium.
@@ -170,8 +169,7 @@ internal static class BrowserContextFactory
 
                 Args = new[]
                 {
-                    "--force-renderer-accessibility",
-                    "--kiosk-printing"
+                    "--force-renderer-accessibility"
                 }
             });
     }

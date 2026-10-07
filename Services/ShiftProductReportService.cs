@@ -154,12 +154,18 @@ public class ShiftProductReportService
         await page.Locator("text=BẢNG PHÂN CHIA SẢN PHẨM")
             .WaitForAsync(new() { Timeout = 10_000 });
 
-        // Nút in thật trên trang kết quả. --kiosk-printing => in thẳng, không có
-        // hộp thoại. Nội dung được ép vừa khổ giấy để đạt tỉ lệ mong muốn.
-        status($"Đang in (vừa khổ 60%)...");
-        await PrintLayout.ApplyAsync(page.Locator("html"));
+        // In bằng PDF: headless không gọi được window.print(), nên sinh PDF
+        // chuẩn qua CDP Page.printToPDF (đúng nội dung báo cáo đang hiện) rồi
+        // in qua HeadlessPrintHelper.
+        status($"Đang sinh PDF báo cáo...");
+        var pdfBytes = await page.PdfAsync(new PagePdfOptions
+        {
+            Format = "A4",
+            PrintBackground = true
+        });
 
-        await page.ClickAsync("#printbtn, img[src*='Print2.gif']");
+        status($"Đang in (PDF báo cáo)...");
+        await HeadlessPrintHelper.PrintPdfAsync(pdfBytes, status);
         await page.WaitForTimeoutAsync(AfterPrintWaitMs);
 
         await page.CloseAsync();

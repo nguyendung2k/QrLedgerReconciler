@@ -198,12 +198,15 @@
                 <RowDefinition Height="8"/>
                 <RowDefinition Height="Auto"/>
                 <!-- 12: Nút In Bảng phân chia sản phẩm -->
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="Auto"/>
+                <!-- 14: Nút Clear công nợ tháng -->
                 <RowDefinition Height="10"/>
                 <RowDefinition Height="Auto"/>
-                <!-- 14: Progress -->
+                <!-- 16: Progress -->
                 <RowDefinition Height="10"/>
                 <RowDefinition Height="Auto"/>
-                <!-- 16: Kết quả — Auto: không chiếm chỗ khi chưa có kết quả -->
+                <!-- 18: Kết quả — Auto: không chiếm chỗ khi chưa có kết quả -->
             </Grid.RowDefinitions>
 
             <!-- Tiêu đề -->
@@ -315,8 +318,13 @@
                     Style="{StaticResource PrintButton}" Margin="0"
                     Command="{Binding PrintShiftProductReportCommand}"/>
 
+            <!-- Nút Clear công nợ tháng (tự tính 23:58 ngày cuối tháng trước) -->
+            <Button Grid.Row="14" Content="Clear công nợ tháng (cuối tháng trước)"
+                    Style="{StaticResource WarningButton}" Margin="0"
+                    Command="{Binding ClearDebtCommand}"/>
+
             <!-- Progress -->
-            <StackPanel Grid.Row="14" Orientation="Horizontal" VerticalAlignment="Center">
+            <StackPanel Grid.Row="16" Orientation="Horizontal" VerticalAlignment="Center">
                 <ProgressBar Width="150" Height="5" IsIndeterminate="True"
                              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
                              Foreground="{StaticResource AccentBrush}" Background="#E5E7EB"/>
@@ -326,7 +334,7 @@
             </StackPanel>
 
             <!-- Kết quả đối chiếu - chỉ hiển thị (và chỉ chiếm chỗ) khi có dữ liệu -->
-            <Border Grid.Row="16" Style="{StaticResource Card}" Margin="0"
+            <Border Grid.Row="18" Style="{StaticResource Card}" Margin="0"
                     Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
                     <TextBlock Text="Kết quả đối chiếu" Style="{StaticResource SectionTitle}"/>

@@ -10,9 +10,18 @@
 
     <OutputType>WinExe</OutputType>
 
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- TFM nâng lên Windows10 (19041) để dùng được WinRT Windows.Data.Pdf
+         (raster hoá PDF thành ảnh khi in headless) + UseWindowsForms cho
+         System.Drawing. -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
 
     <UseWPF>true</UseWPF>
+
+    <!-- System.Drawing / PrintDocument chỉ dùng trong HeadlessPrintHelper.cs
+         (in PDF headless). Không bật UseWindowsForms=global để tránh đụng độ
+         kiểu Application/Brush giữa WPF và WinForms; thay vào đó tham chiếu
+         assembly System.Drawing.Printing + System.Drawing.Common riêng. -->
+    <UseWindowsForms>false</UseWindowsForms>
 
     <ImplicitUsings>enable</ImplicitUsings>
 
@@ -91,6 +100,12 @@
     <PackageReference
       Include="Microsoft.Playwright"
       Version="1.55.0" />
+
+    <!-- In PDF headless: System.Drawing.Printing.PrintDocument + GDI+ Bitmap
+         (chỉ dùng trong Infrastructure/HeadlessPrintHelper.cs). -->
+    <PackageReference
+      Include="System.Drawing.Common"
+      Version="8.0.10" />
 
   </ItemGroup>
 
