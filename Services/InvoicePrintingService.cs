@@ -1,4 +1,5 @@
 ﻿using Microsoft.Playwright;
+using QrLedgerReconciler.Common;
 using QrLedgerReconciler.Helpers;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
@@ -40,8 +41,8 @@ public class InvoicePrintingService
             var url =
                 $"http://192.168.1.101/RPT/RPT.aspx?id=412Details" +
                 $"&FRMNOPRINT1=" +
-                $"&FROMDATE={request.From:dd/M/yyyy HH:mm}" +
-                $"&TODATE={request.To:dd/M/yyyy HH:mm}" +
+                $"&FROMDATE={request.From.ToEgasReport()}" +
+                $"&TODATE={request.To.ToEgasReportEnd()}" +
                 $"&CUST={customerCode}" +
                 $"&PRODUCT=" +
                 $"&GIAODICH=1" +

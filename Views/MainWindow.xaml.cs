@@ -23,4 +23,11 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
 
     }
+
+    // PasswordBox không bind được Password (lý do bảo mật) nên đồng bộ tay.
+    private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox box)
+            _viewModel.Password = box.Password;
+    }
 }

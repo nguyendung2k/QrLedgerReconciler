@@ -1,7 +1,7 @@
 using Microsoft.Playwright;
+using QrLedgerReconciler.Common;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
-using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace QrLedgerReconciler.Services;
@@ -90,8 +90,7 @@ public class ClearShiftService
     {
         var txtDate = page.Locator("input").First;
 
-        await txtDate.FillAsync(
-            date.ToString("d/M/yyyy", CultureInfo.InvariantCulture));
+        await txtDate.FillAsync(date.ToEgasShiftDay());
 
         await page.GetByText("Lọc").ClickAsync();
 

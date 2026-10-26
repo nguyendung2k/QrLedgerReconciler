@@ -68,6 +68,16 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
+        <Style x:Key="ModernComboBox" TargetType="ComboBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
         <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="FontSize" Value="13"/>
@@ -225,14 +235,16 @@
 
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Tài khoản EGAS" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Style="{StaticResource ModernTextBox}" Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ComboBox Style="{StaticResource ModernComboBox}"
+                                  ItemsSource="{Binding AccountOptions}"
+                                  SelectedItem="{Binding UserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Mật khẩu EGAS" Style="{StaticResource FieldLabel}"/>
                         <PasswordBox x:Name="PasswordBox"
                  Style="{StaticResource ModernPasswordBox}"
-                 behaviors:PasswordBoxBehavior.Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                 PasswordChanged="PasswordBox_PasswordChanged"/>
                     </StackPanel>
                 </Grid>
             </Border>

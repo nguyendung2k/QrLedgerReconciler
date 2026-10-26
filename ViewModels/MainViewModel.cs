@@ -25,8 +25,13 @@ public class MainViewModel : INotifyPropertyChanged
 
     public string FromDate { get; set; } = DefaultFromDate;
     public string ToDate { get; set; } = DefaultToDate;
-    public string UserName { get; set; } = "2112229";
-    public string Password { get; set; } = "vp8686";
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+
+    public List<string> AccountOptions { get; } = new()
+    {
+        "2112223", "2212222", "2112229", "2112220"
+    };
 
     private bool _hasResults;
     public bool HasResults

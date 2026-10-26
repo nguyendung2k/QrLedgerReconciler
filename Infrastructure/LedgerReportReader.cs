@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Playwright;
+using QrLedgerReconciler.Common;
 using QrLedgerReconciler.Models;
 
 namespace QrLedgerReconciler.Infrastructure;
@@ -17,8 +18,8 @@ internal static class LedgerReportReader
         var url =
             $"{EgasEndpoints.BaseUrl}/RPT/RPT.aspx" +
             $"?id=GLBookBangKe" +
-            $"&FROMDATE={Uri.EscapeDataString(request.From.ToString("d/M/yyyy", CultureInfo.InvariantCulture))}" +
-            $"&TODATE={Uri.EscapeDataString(request.To.ToString("d/M/yyyy HH:mm", CultureInfo.InvariantCulture))}" +
+            $"&FROMDATE={Uri.EscapeDataString(request.From.ToEgasReport())}" +
+            $"&TODATE={Uri.EscapeDataString(request.To.ToEgasReport())}" +
             $"&ACCT={Uri.EscapeDataString(AccountDesc)}" +
             $"&outputformat=1" +
             $"&formison=1";
