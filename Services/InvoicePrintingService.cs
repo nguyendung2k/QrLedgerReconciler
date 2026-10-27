@@ -4,6 +4,7 @@ using QrLedgerReconciler.Helpers;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
 using System;
+using System.Text.RegularExpressions;
 
 namespace QrLedgerReconciler.Services;
 
@@ -38,41 +39,83 @@ public class InvoicePrintingService
 
             status("Đang mở báo cáo...");
 
-            var url =
-                $"http://192.168.1.101/RPT/RPT.aspx?id=412Details" +
-                $"&FRMNOPRINT1=" +
-                $"&FROMDATE={request.From.ToEgasReport()}" +
-                $"&TODATE={request.To.ToEgasReportEnd()}" +
-                $"&CUST={customerCode}" +
-                $"&PRODUCT=" +
-                $"&GIAODICH=1" +
-                $"&outputformat=1" +
-                $"&noheader=" +
-                $"&formison=1" +
-                $"&rpttype=";
+            // In lần lượt từng ngày trong khoảng đã chọn: hết ngày 1 mới sang
+            // ngày 2, hết ngày 2 mới sang ngày 3, ...
+            var days = EnumerateDays(request.From, request.To).ToList();
 
-            await page.GotoAsync(url);
-
-            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-
-            if (await page.Locator("text=Không có dữ liệu").CountAsync() > 0)
+            for (int d = 0; d < days.Count; d++)
             {
-                status("Không có dữ liệu.");
-                return;
-            }
+                control.ThrowIfStopped();
+                await control.WaitIfPausedAsync(status);
 
-            await PrintAllInvoicesAsync(page, status, control);
+                var day = days[d];
+                var from = DayStart(request.From, day);
+                var to = DayEnd(request.To, day);
+
+                status($"=== Ngày {d + 1}/{days.Count}: {day:dd/MM/yyyy} ===");
+                status($"Đang mở báo cáo ngày {day:dd/MM/yyyy}...");
+
+                await page.GotoAsync(BuildReportUrl(customerCode, from, to));
+                await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+
+                if (await page.Locator("text=Không có dữ liệu").CountAsync() > 0)
+                {
+                    status($"Ngày {day:dd/MM/yyyy} không có dữ liệu.");
+                    continue;
+                }
+
+                await PrintAllInvoicesAsync(page, status, control);
+            }
 
             status(control.IsStopped ? "⏹ Đã dừng theo yêu cầu." : "✅ Hoàn thành.");
         });
     }
 
+    private static string BuildReportUrl(string customerCode, DateTime from, DateTime to)
+        =>
+            $"{EgasEndpoints.BaseUrl}/RPT/RPT.aspx?id=412Details" +
+            $"&FRMNOPRINT1=" +
+            $"&FROMDATE={from.ToEgasReport()}" +
+            $"&TODATE={to.ToEgasReportEnd()}" +
+            $"&CUST={customerCode}" +
+            $"&PRODUCT=" +
+            $"&GIAODICH=1" +
+            $"&outputformat=1" +
+            $"&noheader=" +
+            $"&formison=1" +
+            $"&rpttype=";
+
+    /// <summary>Các ngày (00:00 mỗi ngày) từ ngày bắt đầu đến ngày kết thúc.</summary>
+    private static IEnumerable<DateTime> EnumerateDays(DateTime from, DateTime to)
+    {
+        for (var day = from.Date; day <= to.Date; day = day.AddDays(1))
+            yield return day;
+    }
+
+    /// <summary>Ngày đầu lấy đúng giờ bắt đầu người dùng nhập, các ngày sau lấy từ 00:00.</summary>
+    private static DateTime DayStart(DateTime from, DateTime day)
+        => day.Date == from.Date ? from : day.Date;
+
+    /// <summary>Ngày cuối lấy đúng giờ kết thúc người dùng nhập, các ngày trước lấy tới 23:59:59.</summary>
+    private static DateTime DayEnd(DateTime to, DateTime day)
+        => day.Date == to.Date ? to : day.Date.AddDays(1).AddSeconds(-1);
+
+    // Link mở hoá đơn là thẻ <a>. Text của link bắt đầu bằng số hoá đơn
+    // "411.xxxxx", nên neo regex ở đầu chuỗi để không bắt nhầm link khác
+    // chỉ tình cờ chứa chuỗi "411." ở giữa.
+    private static readonly Regex InvoiceTextPattern = new(@"^\s*411\.\d+");
+
+    private static ILocator InvoiceLinks(IPage page)
+        => page.Locator("a").Filter(new LocatorFilterOptions
+        {
+            HasTextRegex = InvoiceTextPattern
+        });
+
     private static async Task PrintAllInvoicesAsync(IPage page, Action<string> status, PrintControl control)
     {
         status("=== BẮT ĐẦU IN HOÁ ĐƠN ===");
 
-        var invoiceSelector = page.Locator("a").Filter(new LocatorFilterOptions { HasText = "411." });
-        int count = await invoiceSelector.CountAsync();
+        int count = await InvoiceLinks(page).CountAsync();
 
         status($"Tìm thấy {count} hóa đơn.");
 
@@ -89,8 +132,7 @@ public class InvoicePrintingService
             try
             {
                 // Re-query lại mỗi lần vì trang danh sách được tải lại sau mỗi lần in
-                var invoices = page.Locator("a").Filter(new LocatorFilterOptions { HasText = "411." });
-                await invoices.Nth(i).ClickAsync();
+                await InvoiceLinks(page).Nth(i).ClickAsync();
                 await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
 
                 // Click Print

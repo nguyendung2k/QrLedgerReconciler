@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using System;
 using System.IO;
 
 namespace QrLedgerReconciler.Infrastructure;
@@ -24,7 +25,19 @@ internal static class BrowserContextFactory
     private const string BrowserDirectoryName = "playwright-browsers";
 
     /// <summary>
-    /// Runs an operation using a new Playwright browser context.
+    /// Thư mục profile cố định của ứng dụng. Dùng persistent context để cookie,
+    /// session đăng nhập EGAS và các thiết lập trình duyệt được giữ lại giữa các
+    /// lần chạy. Cố ý KHÔNG dùng profile Chrome của người dùng
+    /// (%LOCALAPPDATA%\Google\Chrome\User Data) để tránh xung đột khoá profile
+    /// khi người dùng đang mở Chrome.
+    /// </summary>
+    private static string ProfileDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "QrLedgerReconciler",
+        "chrome-profile");
+
+    /// <summary>
+    /// Runs an operation using the application's persistent browser profile.
     /// </summary>
     public static async Task<T> RunAsync<T>(
         Func<IBrowserContext, Task<T>> action)
@@ -33,13 +46,9 @@ internal static class BrowserContextFactory
 
         using var playwright = await Playwright.CreateAsync();
 
-        await using var browser = await LaunchBrowserAsync(playwright);
+        Directory.CreateDirectory(ProfileDirectory);
 
-        var context = await browser.NewContextAsync(
-            new BrowserNewContextOptions
-            {
-                IgnoreHTTPSErrors = true
-            });
+        var context = await LaunchPersistentContextAsync(playwright);
 
         context.SetDefaultTimeout(DefaultTimeoutMs);
 
@@ -69,23 +78,33 @@ internal static class BrowserContextFactory
     }
 
     /// <summary>
-    /// Launches Google Chrome first.
-    ///
-    /// If Google Chrome cannot be launched, Playwright Chromium
-    /// bundled with the application is used as a fallback.
+    /// Launches Chrome/Chromium with a persistent profile directory.
     /// </summary>
-    private static async Task<IBrowser> LaunchBrowserAsync(
+    private static async Task<IBrowserContext> LaunchPersistentContextAsync(
         IPlaywright playwright)
     {
         try
         {
-            return await LaunchChromeAsync(playwright);
+            return await playwright.Chromium.LaunchPersistentContextAsync(
+                ProfileDirectory,
+                new BrowserTypeLaunchPersistentContextOptions
+                {
+                    Headless = false,
+                    Channel = ChromeChannel,
+                    SlowMo = BrowserSlowMoMs,
+                    IgnoreHTTPSErrors = true,
+                    Args = new[]
+                    {
+                        "--force-renderer-accessibility",
+                        "--kiosk-printing"
+                    }
+                });
         }
         catch (PlaywrightException chromeException)
         {
             try
             {
-                return await LaunchBundledChromiumAsync(playwright);
+                return await LaunchBundledChromiumPersistentAsync(playwright);
             }
             catch (Exception chromiumException)
             {
@@ -99,45 +118,10 @@ internal static class BrowserContextFactory
     }
 
     /// <summary>
-    /// Launches the Google Chrome installed on Windows.
-    ///
-    /// Playwright resolves the "chrome" channel automatically.
+    /// Launches the Playwright Chromium bundled with the application
+    /// using a persistent profile directory.
     /// </summary>
-    private static async Task<IBrowser> LaunchChromeAsync(
-        IPlaywright playwright)
-    {
-        return await playwright.Chromium.LaunchAsync(
-            new BrowserTypeLaunchOptions
-            {
-                Headless = false,
-
-                // IMPORTANT:
-                // Use installed Google Chrome.
-                Channel = ChromeChannel,
-
-                SlowMo = BrowserSlowMoMs,
-
-                Args = new[]
-                {
-                    "--force-renderer-accessibility",
-                    "--kiosk-printing"
-                }
-            });
-    }
-
-    /// <summary>
-    /// Launches the Playwright Chromium bundled with the application.
-    ///
-    /// Expected deployment structure:
-    ///
-    /// Application.exe
-    /// playwright-browsers\
-    ///     chromium-1187\
-    ///     chromium_headless_shell-1187\
-    ///     ffmpeg-1011\
-    ///     winldd-1007\
-    /// </summary>
-    private static async Task<IBrowser> LaunchBundledChromiumAsync(
+    private static async Task<IBrowserContext> LaunchBundledChromiumPersistentAsync(
         IPlaywright playwright)
     {
         var browserDirectory = Path.Combine(
@@ -153,21 +137,17 @@ internal static class BrowserContextFactory
                 "được đóng gói cùng ứng dụng.");
         }
 
-        // Tell Playwright to search for its browser binaries
-        // inside the application directory.
         Environment.SetEnvironmentVariable(
             "PLAYWRIGHT_BROWSERS_PATH",
             browserDirectory);
 
-        return await playwright.Chromium.LaunchAsync(
-            new BrowserTypeLaunchOptions
+        return await playwright.Chromium.LaunchPersistentContextAsync(
+            ProfileDirectory,
+            new BrowserTypeLaunchPersistentContextOptions
             {
                 Headless = false,
-
-                // No Channel here:
-                // this launches the bundled Playwright Chromium.
                 SlowMo = BrowserSlowMoMs,
-
+                IgnoreHTTPSErrors = true,
                 Args = new[]
                 {
                     "--force-renderer-accessibility",
