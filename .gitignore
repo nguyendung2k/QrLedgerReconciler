@@ -21,3 +21,5 @@ ms-playwright/
 
 # Logs
 *.log
+# Debug scripts (scratch)
+debug/

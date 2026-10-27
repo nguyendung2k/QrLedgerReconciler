@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using QrLedgerReconciler.Common;
 using QrLedgerReconciler.Infrastructure;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -167,7 +168,7 @@ internal static class ShiftInvoiceProcessor
             new() { WaitUntil = WaitUntilState.DOMContentLoaded });
 
         var dateInput = page.Locator("input[name='viewdate']");
-        await dateInput.FillAsync(day.ToString("d/M/yyyy"));
+        await dateInput.FillAsync(day.ToEgasShiftDay());
         await dateInput.PressAsync("Enter");
 
         await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);

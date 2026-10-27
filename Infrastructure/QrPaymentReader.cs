@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 using Microsoft.Playwright;
 
+using QrLedgerReconciler.Common;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
 
@@ -541,15 +542,8 @@ public sealed class QrPaymentReader
             // 21. FORMAT FROM / TO
             // ====================================================
 
-            var fromText =
-                request.From.ToString(
-                    "dd-MM-yyyy HH:mm:00",
-                    CultureInfo.InvariantCulture);
-
-            var toText =
-                request.To.ToString(
-                    "dd-MM-yyyy HH:mm:59",
-                    CultureInfo.InvariantCulture);
+            var fromText = request.From.ToHdbankStart();
+            var toText = request.To.ToHdbankEnd();
 
             Log("[14] Khoảng thời gian:");
             Log($"     FROM = {fromText}");

@@ -24,6 +24,7 @@ public partial class MainWindow : Window
 
     }
 
+    // PasswordBox không bind được Password (lý do bảo mật) nên đồng bộ tay.
     private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
         if (sender is PasswordBox box)

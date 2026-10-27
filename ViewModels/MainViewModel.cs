@@ -25,11 +25,13 @@ public class MainViewModel : INotifyPropertyChanged
 
     public string FromDate { get; set; } = DefaultFromDate;
     public string ToDate { get; set; } = DefaultToDate;
-    private string _userName = string.Empty;
-    public string UserName { get => _userName; set => SetProperty(ref _userName, value); }
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 
-    private string _password = string.Empty;
-    public string Password { get => _password; set => SetProperty(ref _password, value); }
+    public List<string> AccountOptions { get; } = new()
+    {
+        "2112223", "2212222", "2112229", "2112220"
+    };
 
     private bool _hasResults;
     public bool HasResults
@@ -184,47 +186,11 @@ public class MainViewModel : INotifyPropertyChanged
         });
     }
 
-    private async void ExecuteClearDebt()
-    {
-        if (string.IsNullOrWhiteSpace(UserName)) { _showMessage("Nhập tài khoản EGAS."); return; }
-        if (string.IsNullOrWhiteSpace(Password)) { _showMessage("Nhập mật khẩu EGAS."); return; }
+    public string? DocumentType { get; set; } = "Tất cả";
 
-        var toDate = GetLastDayOfPreviousMonth();
-
-        if (_showConfirm("Xác nhận",
-            $"Thao tác sẽ clear công nợ tháng {toDate:MM/yyyy} (đến {toDate:dd/MM/yyyy HH:mm}).\n\nTiếp tục?")
-            != MessageBoxResult.Yes)
-            return;
-
-        var request = new ReconciliationRequest(UserName.Trim(), Password, toDate.AddDays(-1).Date, toDate);
-
-        IsBusy = true;
-        StatusText = $"Đang clear công nợ tháng {toDate:MM/yyyy}...";
-        try
-        {
-            var service = new ClearDebtService();
-            var result = await service.RunAsync(request, s => StatusText = s);
-            Log($"Clear xong {result.SuccessCount} khách, {result.Errors.Count} lỗi.");
-            _showMessage(result.Errors.Count == 0
-                ? $"Đã clear xong tất cả {result.SuccessCount} khách."
-                : $"Clear xong {result.SuccessCount} khách.\n{result.Errors.Count} lỗi:\n{string.Join("\n", result.Errors)}");
-        }
-        catch (Exception ex) { HandleError(ex); }
-        finally { IsBusy = false; StatusText = "Hoàn thành."; }
-    }
-
-    /// <summary>
-    /// 23:58 ngày cuối tháng trước — cùng logic với GetLastDayOfPreviousMonth
-    /// của EgasTelegramBot.
-    /// </summary>
-    private static DateTime GetLastDayOfPreviousMonth()
-    {
-        var today = DateTime.Today;
-        var lastMonth = today.AddMonths(-1);
-        return new DateTime(lastMonth.Year, lastMonth.Month,
-            DateTime.DaysInMonth(lastMonth.Year, lastMonth.Month),
-            23, 58, 0);
-    }
+    /// <summary>Loại chứng từ chọn được ở ô "Loại chứng từ" cạnh mã khách hàng.</summary>
+    public List<string> DocumentTypeOptions { get; } =
+        InvoicePrintingService.DocumentTypes.ToList();
 
     private async void ExecutePrintDebtInvoices(string? customerCode)
     {
@@ -247,7 +213,12 @@ public class MainViewModel : INotifyPropertyChanged
                 var service = new InvoicePrintingService();
                 try
                 {
-                    await service.PrintDebtInvoicesAsync(req, customerCode.Trim(), s => StatusText = s, _printControl);
+                    await service.PrintDebtInvoicesAsync(
+                        req,
+                        customerCode.Trim(),
+                        s => StatusText = s,
+                        _printControl,
+                        DocumentType);
                     Log("Đã in xong tất cả hoá đơn công nợ.");
                 }
                 catch (OperationCanceledException)

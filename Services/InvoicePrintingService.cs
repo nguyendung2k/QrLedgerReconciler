@@ -1,17 +1,26 @@
 ﻿using Microsoft.Playwright;
+using QrLedgerReconciler.Common;
+using QrLedgerReconciler.Helpers;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
 using System;
+using System.Text.RegularExpressions;
 
 namespace QrLedgerReconciler.Services;
 
 public class InvoicePrintingService
 {
+    /// <param name="documentType">
+    /// Loại chứng từ cần in: "411", "415", ... Chỉ in các link có số chứng từ
+    /// bắt đầu bằng loại này. Để null/"" (hoặc "Tất cả") thì in mọi chứng từ
+    /// cùng dạng số 3 chữ số (411, 415, và các loại phát sinh sau này).
+    /// </param>
     public async Task PrintDebtInvoicesAsync(
         ReconciliationRequest request,
         string customerCode,
         Action<string> status,
-        PrintControl? control = null)
+        PrintControl? control = null,
+        string? documentType = null)
     {
         // Cho phép gọi không truyền control (ví dụ test) — khi đó không có
         // ai gọi Pause/Resume/Stop nên vòng lặp chạy như bình thường.
@@ -36,42 +45,123 @@ public class InvoicePrintingService
 
             status("Đang mở báo cáo...");
 
-            var url =
-                $"http://192.168.1.101/RPT/RPT.aspx?id=412Details" +
-                $"&FRMNOPRINT1=" +
-                $"&FROMDATE={request.From:dd/M/yyyy HH:mm}" +
-                $"&TODATE={request.To:dd/M/yyyy HH:mm}" +
-                $"&CUST={customerCode}" +
-                $"&PRODUCT=" +
-                $"&GIAODICH=1" +
-                $"&outputformat=1" +
-                $"&noheader=" +
-                $"&formison=1" +
-                $"&rpttype=";
+            // In lần lượt từng ngày trong khoảng đã chọn: hết ngày 1 mới sang
+            // ngày 2, hết ngày 2 mới sang ngày 3, ...
+            var days = EnumerateDays(request.From, request.To).ToList();
 
-            await page.GotoAsync(url);
-
-            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-
-            if (await page.Locator("text=Không có dữ liệu").CountAsync() > 0)
+            for (int d = 0; d < days.Count; d++)
             {
-                status("Không có dữ liệu.");
-                return;
-            }
+                control.ThrowIfStopped();
+                await control.WaitIfPausedAsync(status);
 
-            await PrintAllInvoicesAsync(page, url, status, control);
+                var day = days[d];
+                var from = DayStart(request.From, day);
+                var to = DayEnd(request.To, day);
+
+                status($"=== Ngày {d + 1}/{days.Count}: {day:dd/MM/yyyy} ===");
+                status($"Đang mở báo cáo ngày {day:dd/MM/yyyy}...");
+
+                await page.GotoAsync(BuildReportUrl(customerCode, from, to));
+                await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+
+                if (await page.Locator("text=Không có dữ liệu").CountAsync() > 0)
+                {
+                    status($"Ngày {day:dd/MM/yyyy} không có dữ liệu.");
+                    continue;
+                }
+
+                await PrintAllInvoicesAsync(page, status, control, documentType);
+            }
 
             status(control.IsStopped ? "⏹ Đã dừng theo yêu cầu." : "✅ Hoàn thành.");
         });
     }
 
+    private static string DescribeDocumentType(string? documentType)
+        => string.IsNullOrWhiteSpace(documentType) ||
+           documentType.Equals(AllDocumentTypes, StringComparison.OrdinalIgnoreCase)
+            ? AllDocumentTypes
+            : documentType.Trim();
+
+    /// <summary>
+    /// Chứng từ 415 in bằng mẫu "In chứng từ giấy HĐĐT"; các loại khác in bằng
+    /// mẫu mặc định. Nhận số chứng từ của từng link (vd "415.01234") để xử lý
+    /// đúng ngay cả khi in "Tất cả" (lẫn 411 và 415 trong cùng danh sách).
+    /// </summary>
+    private static bool RequiresPaperInvoiceTemplate(string? invoiceNumber)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceNumber))
+            return false;
+
+        // Bỏ ký tự trắng/thẻ xuống dòng, lấy phần số đầu tiên "415.01234"
+        var first = invoiceNumber.Split(' ', '\n', '\t')[0].Trim();
+        return first.StartsWith("415.", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildReportUrl(string customerCode, DateTime from, DateTime to)
+        =>
+            $"{EgasEndpoints.BaseUrl}/RPT/RPT.aspx?id=412Details" +
+            $"&FRMNOPRINT1=" +
+            $"&FROMDATE={from.ToEgasReport()}" +
+            $"&TODATE={to.ToEgasReportEnd()}" +
+            $"&CUST={customerCode}" +
+            $"&PRODUCT=" +
+            $"&GIAODICH=1" +
+            $"&outputformat=1" +
+            $"&noheader=" +
+            $"&formison=1" +
+            $"&rpttype=";
+
+    /// <summary>Các ngày (00:00 mỗi ngày) từ ngày bắt đầu đến ngày kết thúc.</summary>
+    private static IEnumerable<DateTime> EnumerateDays(DateTime from, DateTime to)
+    {
+        for (var day = from.Date; day <= to.Date; day = day.AddDays(1))
+            yield return day;
+    }
+
+    /// <summary>Ngày đầu lấy đúng giờ bắt đầu người dùng nhập, các ngày sau lấy từ 00:00.</summary>
+    private static DateTime DayStart(DateTime from, DateTime day)
+        => day.Date == from.Date ? from : day.Date;
+
+    /// <summary>Ngày cuối lấy đúng giờ kết thúc người dùng nhập, các ngày trước lấy tới 23:59:59.</summary>
+    private static DateTime DayEnd(DateTime to, DateTime day)
+        => day.Date == to.Date ? to : day.Date.AddDays(1).AddSeconds(-1);
+
+    // Link mở hoá đơn là thẻ <a>, text bắt đầu bằng số chứng từ dạng
+    // "411.xxxxx" / "415.xxxxx". Các loại chứng từ khác về sau cũng cùng
+    // định dạng 3 chữ số + dấu chấm, nên regex mặc định nhận mọi loại như
+    // vậy (^: neo ở đầu chuỗi để không bắt nhầm link chỉ tình cờ chứa
+    // "411." ở giữa). Khi người dùng chọn một loại cụ thể thì chỉ khớp loại đó.
+    private const string AllDocumentTypes = "Tất cả";
+
+    public static readonly IReadOnlyList<string> DocumentTypes = new[]
+    {
+        AllDocumentTypes, "411", "415"
+    };
+
+    private static Regex InvoiceTextPattern(string? documentType)
+        => string.IsNullOrWhiteSpace(documentType) ||
+           documentType.Equals(AllDocumentTypes, StringComparison.OrdinalIgnoreCase)
+            ? new Regex(@"^\s*\d{3}\.\d+")
+            : new Regex($@"^\s*{Regex.Escape(documentType.Trim())}\.\d+");
+
+    private static ILocator InvoiceLinks(IPage page, string? documentType)
+        => page.Locator("a").Filter(new LocatorFilterOptions
+        {
+            HasTextRegex = InvoiceTextPattern(documentType)
+        });
+
     private static async Task PrintAllInvoicesAsync(
-        IPage page, string reportUrl, Action<string> status, PrintControl control)
+        IPage page,
+        Action<string> status,
+        PrintControl control,
+        string? documentType)
     {
         status("=== BẮT ĐẦU IN HOÁ ĐƠN ===");
 
-        var invoiceSelector = page.Locator("a").Filter(new LocatorFilterOptions { HasText = "411." });
-        int count = await invoiceSelector.CountAsync();
+        status($"Loại chứng từ: {DescribeDocumentType(documentType)}");
+
+        int count = await InvoiceLinks(page, documentType).CountAsync();
 
         status($"Tìm thấy {count} hóa đơn.");
 
@@ -88,8 +178,14 @@ public class InvoicePrintingService
             try
             {
                 // Re-query lại mỗi lần vì trang danh sách được tải lại sau mỗi lần in
-                var invoices = page.Locator("a").Filter(new LocatorFilterOptions { HasText = "411." });
-                await invoices.Nth(i).ClickAsync();
+                var invoiceLink = InvoiceLinks(page, documentType).Nth(i);
+
+                // Số chứng từ của link hiện tại (vd "415.01234"), dùng để chọn
+                // đúng mẫu in riêng cho từng loại ngay cả khi in "Tất cả".
+                var invoiceNumber = ((await invoiceLink.InnerTextAsync()).Trim())
+                    .Split(' ', '\n', '\t')[0];
+
+                await invoiceLink.ClickAsync();
                 await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
 
                 // Click Print
@@ -105,6 +201,19 @@ public class InvoicePrintingService
 
                 if (frame != null)
                 {
+                    // Chứng từ 415 cần chọn mẫu "In chứng từ giấy HĐĐT" trên
+                    // ô select trước khi bấm "Chọn mẫu in". Quyết định theo số
+                    // chứng từ của từng link để khi in "Tất cả" vẫn áp dụng
+                    // đúng cho riêng các hoá đơn 415.
+                    if (RequiresPaperInvoiceTemplate(invoiceNumber))
+                    {
+                        status("Đang chọn mẫu in chứng từ giấy HĐĐT...");
+                        await frame.SelectOptionAsync(
+                            "select",
+                            new[] { new SelectOptionValue { Label = "In chứng từ giấy HĐĐT" } });
+                        await frame.WaitForTimeoutAsync(100);
+                    }
+
                     await frame.ClickAsync("input[value='Chọn mẫu in'], input.btn");
 
                     // Sau khi bấm "Chọn mẫu in", iframe saveTranFrm chuyển sang
@@ -176,14 +285,8 @@ body { margin: 0 auto !important; }
                     }
                 }
 
-                // In xong 1 hoá đơn: quay lại trang báo cáo (danh sách hoá đơn)
-                // để lấy hoá đơn tiếp theo. Trước đây chỉ chờ selector "411."
-                // mà không reload, nên trang danh sách có thể đã cũ → in nhầm
-                // nội dung hoá đơn trước.
-                await page.GotoAsync(reportUrl);
-                await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-                await page.WaitForSelectorAsync("a:has-text('411.')",
-                    new PageWaitForSelectorOptions { Timeout = 5000 });
+                await InvoiceLinks(page, documentType).First.WaitForAsync(
+                    new LocatorWaitForOptions { Timeout = 2000 });
 
                 status("Đã quay lại danh sách.");
             }

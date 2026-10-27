@@ -1,7 +1,7 @@
 using Microsoft.Playwright;
+using QrLedgerReconciler.Common;
 using QrLedgerReconciler.Infrastructure;
 using QrLedgerReconciler.Models;
-using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace QrLedgerReconciler.Services;
@@ -91,7 +91,7 @@ public class ShiftProductReportService
         await homePage.GotoAsync($"{EgasEndpoints.PublicBaseUrl}/UHome/UHome.aspx");
 
         var dateInput = homePage.Locator("input[name='viewdate']");
-        await dateInput.FillAsync(date.ToString("d/M/yyyy", CultureInfo.InvariantCulture));
+        await dateInput.FillAsync(date.ToEgasShiftDay());
         await dateInput.PressAsync("Enter");
 
         await homePage.WaitForLoadStateAsync(LoadState.DOMContentLoaded);

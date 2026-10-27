@@ -68,6 +68,16 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
+        <Style x:Key="ModernComboBox" TargetType="ComboBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
         <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="FontSize" Value="13"/>
@@ -228,7 +238,9 @@
 
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Tài khoản EGAS" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Style="{StaticResource ModernTextBox}" Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ComboBox Style="{StaticResource ModernComboBox}"
+                                  ItemsSource="{Binding AccountOptions}"
+                                  SelectedItem="{Binding UserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
@@ -286,13 +298,26 @@
 
             <!-- Mã khách hàng -->
             <Border Grid.Row="6" Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="Mã khách hàng công nợ" Style="{StaticResource FieldLabel}"/>
-                    <TextBox x:Name="CustomerCodeTextBox"
-                             Style="{StaticResource ModernTextBox}"
-                             Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="Nhập mã khách hàng để tra cứu / in hoá đơn công nợ"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="180"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Mã khách hàng công nợ" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="CustomerCodeTextBox"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Nhập mã khách hàng để tra cứu / in hoá đơn công nợ"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Loại chứng từ" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Style="{StaticResource ModernComboBox}"
+                                  ItemsSource="{Binding DocumentTypeOptions}"
+                                  SelectedItem="{Binding DocumentType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
             </Border>
 
             <!-- Buttons chính -->
