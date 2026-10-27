@@ -184,6 +184,12 @@ public class MainViewModel : INotifyPropertyChanged
         });
     }
 
+    public string? DocumentType { get; set; } = "Tất cả";
+
+    /// <summary>Loại chứng từ chọn được ở ô "Loại chứng từ" cạnh mã khách hàng.</summary>
+    public List<string> DocumentTypeOptions { get; } =
+        InvoicePrintingService.DocumentTypes.ToList();
+
     private async void ExecutePrintDebtInvoices(string? customerCode)
     {
         if (string.IsNullOrWhiteSpace(customerCode))
@@ -205,7 +211,12 @@ public class MainViewModel : INotifyPropertyChanged
                 var service = new InvoicePrintingService();
                 try
                 {
-                    await service.PrintDebtInvoicesAsync(req, customerCode.Trim(), s => StatusText = s, _printControl);
+                    await service.PrintDebtInvoicesAsync(
+                        req,
+                        customerCode.Trim(),
+                        s => StatusText = s,
+                        _printControl,
+                        DocumentType);
                     Log("Đã in xong tất cả hoá đơn công nợ.");
                 }
                 catch (OperationCanceledException)

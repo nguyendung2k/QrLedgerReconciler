@@ -295,13 +295,26 @@
 
             <!-- Mã khách hàng -->
             <Border Grid.Row="6" Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="Mã khách hàng công nợ" Style="{StaticResource FieldLabel}"/>
-                    <TextBox x:Name="CustomerCodeTextBox"
-                             Style="{StaticResource ModernTextBox}"
-                             Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="Nhập mã khách hàng để tra cứu / in hoá đơn công nợ"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="180"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Mã khách hàng công nợ" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="CustomerCodeTextBox"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Nhập mã khách hàng để tra cứu / in hoá đơn công nợ"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Loại chứng từ" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Style="{StaticResource ModernComboBox}"
+                                  ItemsSource="{Binding DocumentTypeOptions}"
+                                  SelectedItem="{Binding DocumentType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
             </Border>
 
             <!-- Buttons chính -->

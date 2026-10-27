@@ -10,11 +10,17 @@ namespace QrLedgerReconciler.Services;
 
 public class InvoicePrintingService
 {
+    /// <param name="documentType">
+    /// Loại chứng từ cần in: "411", "415", ... Chỉ in các link có số chứng từ
+    /// bắt đầu bằng loại này. Để null/"" (hoặc "Tất cả") thì in mọi chứng từ
+    /// cùng dạng số 3 chữ số (411, 415, và các loại phát sinh sau này).
+    /// </param>
     public async Task PrintDebtInvoicesAsync(
         ReconciliationRequest request,
         string customerCode,
         Action<string> status,
-        PrintControl? control = null)
+        PrintControl? control = null,
+        string? documentType = null)
     {
         // Cho phép gọi không truyền control (ví dụ test) — khi đó không có
         // ai gọi Pause/Resume/Stop nên vòng lặp chạy như bình thường.
@@ -64,11 +70,32 @@ public class InvoicePrintingService
                     continue;
                 }
 
-                await PrintAllInvoicesAsync(page, status, control);
+                await PrintAllInvoicesAsync(page, status, control, documentType);
             }
 
             status(control.IsStopped ? "⏹ Đã dừng theo yêu cầu." : "✅ Hoàn thành.");
         });
+    }
+
+    private static string DescribeDocumentType(string? documentType)
+        => string.IsNullOrWhiteSpace(documentType) ||
+           documentType.Equals(AllDocumentTypes, StringComparison.OrdinalIgnoreCase)
+            ? AllDocumentTypes
+            : documentType.Trim();
+
+    /// <summary>
+    /// Chứng từ 415 in bằng mẫu "In chứng từ giấy HĐĐT"; các loại khác in bằng
+    /// mẫu mặc định. Nhận số chứng từ của từng link (vd "415.01234") để xử lý
+    /// đúng ngay cả khi in "Tất cả" (lẫn 411 và 415 trong cùng danh sách).
+    /// </summary>
+    private static bool RequiresPaperInvoiceTemplate(string? invoiceNumber)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceNumber))
+            return false;
+
+        // Bỏ ký tự trắng/thẻ xuống dòng, lấy phần số đầu tiên "415.01234"
+        var first = invoiceNumber.Split(' ', '\n', '\t')[0].Trim();
+        return first.StartsWith("415.", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string BuildReportUrl(string customerCode, DateTime from, DateTime to)
@@ -100,22 +127,41 @@ public class InvoicePrintingService
     private static DateTime DayEnd(DateTime to, DateTime day)
         => day.Date == to.Date ? to : day.Date.AddDays(1).AddSeconds(-1);
 
-    // Link mở hoá đơn là thẻ <a>. Text của link bắt đầu bằng số hoá đơn
-    // "411.xxxxx", nên neo regex ở đầu chuỗi để không bắt nhầm link khác
-    // chỉ tình cờ chứa chuỗi "411." ở giữa.
-    private static readonly Regex InvoiceTextPattern = new(@"^\s*411\.\d+");
+    // Link mở hoá đơn là thẻ <a>, text bắt đầu bằng số chứng từ dạng
+    // "411.xxxxx" / "415.xxxxx". Các loại chứng từ khác về sau cũng cùng
+    // định dạng 3 chữ số + dấu chấm, nên regex mặc định nhận mọi loại như
+    // vậy (^: neo ở đầu chuỗi để không bắt nhầm link chỉ tình cờ chứa
+    // "411." ở giữa). Khi người dùng chọn một loại cụ thể thì chỉ khớp loại đó.
+    private const string AllDocumentTypes = "Tất cả";
 
-    private static ILocator InvoiceLinks(IPage page)
+    public static readonly IReadOnlyList<string> DocumentTypes = new[]
+    {
+        AllDocumentTypes, "411", "415"
+    };
+
+    private static Regex InvoiceTextPattern(string? documentType)
+        => string.IsNullOrWhiteSpace(documentType) ||
+           documentType.Equals(AllDocumentTypes, StringComparison.OrdinalIgnoreCase)
+            ? new Regex(@"^\s*\d{3}\.\d+")
+            : new Regex($@"^\s*{Regex.Escape(documentType.Trim())}\.\d+");
+
+    private static ILocator InvoiceLinks(IPage page, string? documentType)
         => page.Locator("a").Filter(new LocatorFilterOptions
         {
-            HasTextRegex = InvoiceTextPattern
+            HasTextRegex = InvoiceTextPattern(documentType)
         });
 
-    private static async Task PrintAllInvoicesAsync(IPage page, Action<string> status, PrintControl control)
+    private static async Task PrintAllInvoicesAsync(
+        IPage page,
+        Action<string> status,
+        PrintControl control,
+        string? documentType)
     {
         status("=== BẮT ĐẦU IN HOÁ ĐƠN ===");
 
-        int count = await InvoiceLinks(page).CountAsync();
+        status($"Loại chứng từ: {DescribeDocumentType(documentType)}");
+
+        int count = await InvoiceLinks(page, documentType).CountAsync();
 
         status($"Tìm thấy {count} hóa đơn.");
 
@@ -132,7 +178,14 @@ public class InvoicePrintingService
             try
             {
                 // Re-query lại mỗi lần vì trang danh sách được tải lại sau mỗi lần in
-                await InvoiceLinks(page).Nth(i).ClickAsync();
+                var invoiceLink = InvoiceLinks(page, documentType).Nth(i);
+
+                // Số chứng từ của link hiện tại (vd "415.01234"), dùng để chọn
+                // đúng mẫu in riêng cho từng loại ngay cả khi in "Tất cả".
+                var invoiceNumber = ((await invoiceLink.InnerTextAsync()).Trim())
+                    .Split(' ', '\n', '\t')[0];
+
+                await invoiceLink.ClickAsync();
                 await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
 
                 // Click Print
@@ -149,6 +202,19 @@ public class InvoicePrintingService
 
                 if (frame != null)
                 {
+                    // Chứng từ 415 cần chọn mẫu "In chứng từ giấy HĐĐT" trên
+                    // ô select trước khi bấm "Chọn mẫu in". Quyết định theo số
+                    // chứng từ của từng link để khi in "Tất cả" vẫn áp dụng
+                    // đúng cho riêng các hoá đơn 415.
+                    if (RequiresPaperInvoiceTemplate(invoiceNumber))
+                    {
+                        status("Đang chọn mẫu in chứng từ giấy HĐĐT...");
+                        await frame.SelectOptionAsync(
+                            "select",
+                            new[] { new SelectOptionValue { Label = "In chứng từ giấy HĐĐT" } });
+                        await frame.WaitForTimeoutAsync(100);
+                    }
+
                     await frame.ClickAsync("input[value='Chọn mẫu in'], input.btn");
                     await frame.WaitForTimeoutAsync(100);
 
@@ -160,8 +226,8 @@ public class InvoicePrintingService
                         new PageWaitForLoadStateOptions { Timeout = 2000 });
                 }
 
-                await page.WaitForSelectorAsync("a:has-text('411.')",
-                    new PageWaitForSelectorOptions { Timeout = 2000 });
+                await InvoiceLinks(page, documentType).First.WaitForAsync(
+                    new LocatorWaitForOptions { Timeout = 2000 });
 
                 status("Đã quay lại danh sách.");
             }
