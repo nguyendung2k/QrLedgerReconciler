@@ -186,6 +186,73 @@ public class MainViewModel : INotifyPropertyChanged
         });
     }
 
+    /// <summary>
+    /// Clear công nợ tháng trước: lấy mốc cuối tháng trước (23:58 ngày cuối)
+    /// rồi chạy ClearDebtService từ đầu ngày hôm sau? — Không: khoảng tính theo
+    /// tháng trước, từ 00:00 ngày 1 đến 23:58 ngày cuối tháng.
+    /// </summary>
+    private async void ExecuteClearDebt()
+    {
+        if (string.IsNullOrWhiteSpace(UserName))
+        {
+            _showMessage("Nhập tài khoản EGAS.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Password))
+        {
+            _showMessage("Nhập mật khẩu EGAS.");
+            return;
+        }
+
+        var toDate = GetLastDayOfPreviousMonth();
+
+        if (_showConfirm("Xác nhận",
+                $"Thao tác sẽ clear công nợ tháng {toDate:MM/yyyy} (đến {toDate:dd/MM/yyyy HH:mm}).\n\nTiếp tục?")
+            != MessageBoxResult.Yes)
+            return;
+
+        var request = new ReconciliationRequest(
+            UserName.Trim(), Password, toDate.AddDays(-1).Date, toDate);
+
+        IsBusy = true;
+        StatusText = $"Đang clear công nợ tháng {toDate:MM/yyyy}...";
+
+        try
+        {
+            var service = new ClearDebtService();
+            var result = await service.RunAsync(request, s => StatusText = s);
+
+            Log($"Clear xong {result.SuccessCount} khách, {result.Errors.Count} lỗi.");
+
+            _showMessage(result.Errors.Count == 0
+                ? $"Đã clear xong tất cả {result.SuccessCount} khách."
+                : $"Clear xong {result.SuccessCount} khách.\n{result.Errors.Count} lỗi:\n{string.Join("\n", result.Errors)}");
+        }
+        catch (Exception ex)
+        {
+            HandleError(ex);
+        }
+        finally
+        {
+            IsBusy = false;
+            StatusText = "Hoàn thành.";
+        }
+    }
+
+    /// <summary>23:58 ngày cuối cùng của tháng trước.</summary>
+    private static DateTime GetLastDayOfPreviousMonth()
+    {
+        var today = DateTime.Today;
+        var lastMonth = today.AddMonths(-1);
+
+        return new DateTime(
+            lastMonth.Year,
+            lastMonth.Month,
+            DateTime.DaysInMonth(lastMonth.Year, lastMonth.Month),
+            23, 58, 0);
+    }
+
     public string? DocumentType { get; set; } = "Tất cả";
 
     /// <summary>Loại chứng từ chọn được ở ô "Loại chứng từ" cạnh mã khách hàng.</summary>
