@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -16,6 +17,8 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly Action<string> _showMessage;
     private readonly Func<string, string, MessageBoxResult> _showConfirm;
     private readonly IDialogService _dialogService;
+    private readonly AccountStore _accountStore;
+    private readonly Window? _owner;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -26,12 +29,53 @@ public class MainViewModel : INotifyPropertyChanged
     public string FromDate { get; set; } = DefaultFromDate;
     public string ToDate { get; set; } = DefaultToDate;
     public string UserName { get; set; } = string.Empty;
+
+    // Không dùng auto-property: PasswordBox bên code-behind ghi trực tiếp vào
+    // _password khi người dùng gõ tay, nên chỉ cần getter/setter thường.
     public string Password { get; set; } = string.Empty;
 
-    public List<string> AccountOptions { get; } = new()
+    /// <summary>Tài khoản EGAS đang hoạt động (ẩn các tài khoản đã tắt).</summary>
+    public ObservableCollection<UserAccount> Accounts { get; } = new();
+
+    private UserAccount? _selectedAccount;
+    public UserAccount? SelectedAccount
     {
-        "2112223", "2212222", "2112229", "2112220"
-    };
+        get => _selectedAccount;
+        set
+        {
+            if (ReferenceEquals(_selectedAccount, value)) return;
+
+            _selectedAccount = value;
+
+            if (value is not null)
+            {
+                UserName = value.UserName;
+                Password = value.Password;
+                Notify(nameof(UserName));
+                Notify(nameof(Password));
+            }
+
+            Notify();
+            Notify(nameof(SelectedAccountName));
+            Notify(nameof(CanPrintDebtInvoice));
+            Notify(nameof(CanClearDebt));
+
+            // Thay đổi tài khoản → khoá/mở các nút theo quyền.
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public string SelectedAccountName => _selectedAccount?.DisplayName ?? "(chưa chọn)";
+
+    /// <summary>Tài khoản hiện tại có được dùng chức năng này không.</summary>
+    private bool CanUse(AppFunction function)
+        => _selectedAccount?.CanUse(function) ?? false;
+
+    /// <summary>Quyền In công nợ — dùng để khoá ô mã khách hàng &amp; loại chứng từ.</summary>
+    public bool CanPrintDebtInvoice => CanUse(AppFunction.PrintDebtInvoice);
+
+    /// <summary>Quyền Clear công nợ tháng — dùng để khoá nút Clear công nợ.</summary>
+    public bool CanClearDebt => CanUse(AppFunction.ClearDebt);
 
     private bool _hasResults;
     public bool HasResults
@@ -101,34 +145,77 @@ public class MainViewModel : INotifyPropertyChanged
 
     public MainViewModel(Action<string> showMessage,
                          Func<string, string, MessageBoxResult> showConfirm,
-                         IDialogService dialogService)
+                         IDialogService dialogService,
+                         AccountStore accountStore,
+                         Window? owner = null)
     {
         _showMessage = showMessage;
         _showConfirm = showConfirm;
         _dialogService = dialogService;
+        _accountStore = accountStore;
+        _owner = owner;
 
-        GetLedgerCommand = new RelayCommand(ExecuteGetLedger);
-        GetQrCommand = new RelayCommand(ExecuteGetQr);
-        RunReconcileCommand = new RelayCommand(ExecuteReconcile);
-        ClearShiftCommand = new RelayCommand(ExecuteClearShift);
-        ClearDebtCommand = new RelayCommand(ExecuteClearDebt);
+        GetLedgerCommand = new RelayCommand(ExecuteGetLedger, () => CanUse(AppFunction.GetLedger));
+        GetQrCommand = new RelayCommand(ExecuteGetQr, () => CanUse(AppFunction.GetQr));
+        RunReconcileCommand = new RelayCommand(ExecuteReconcile, () => CanUse(AppFunction.Reconcile));
+        ClearShiftCommand = new RelayCommand(ExecuteClearShift, () => CanUse(AppFunction.ClearShift));
+        ClearDebtCommand = new RelayCommand(ExecuteClearDebt, () => CanUse(AppFunction.ClearDebt));
         PickFromDateCommand = new RelayCommand(ExecutePickFromDate);
         PickToDateCommand = new RelayCommand(ExecutePickToDate);
 
-        // Không cho bấm "In hoá đơn công nợ" lần nữa khi đang in dở
-        PrintDebtInvoiceCommand = new RelayCommand<string>(ExecutePrintDebtInvoices, _ => !IsPrinting);
+        PrintDebtInvoiceCommand = new RelayCommand<string>(ExecutePrintDebtInvoices,
+            _ => CanUse(AppFunction.PrintDebtInvoice) && !IsPrinting);
 
-        // In "Bảng phân chia sản phẩm" theo ca — dùng chung nút Busy như Clear ca
-        PrintShiftProductReportCommand = new RelayCommand(ExecutePrintShiftProductReport);
+        PrintShiftProductReportCommand = new RelayCommand(ExecutePrintShiftProductReport,
+            () => CanUse(AppFunction.PrintShiftProductReport));
 
-        // Tạm dừng: chỉ bật khi đang in và chưa pause
         PauseCommand = new RelayCommand(ExecutePause, () => IsPrinting && !IsPrintPaused);
-        // Tiếp tục: chỉ bật khi đang in và đang pause
         ResumeCommand = new RelayCommand(ExecuteResume, () => IsPrinting && IsPrintPaused);
-        // Kết thúc: bật bất cứ khi nào đang in (kể cả đang pause)
         StopCommand = new RelayCommand(ExecuteStop, () => IsPrinting);
 
+        OpenAccountManagerCommand = new RelayCommand(ExecuteOpenAccountManager);
+
         HasResults = false;
+
+        ReloadAccounts();
+
+        // Chọn tài khoản đầu tiên đang hoạt động (nếu có) để không phải chọn tay.
+        SelectedAccount = Accounts.Count > 0 ? Accounts[0] : null;
+
+        Notify(nameof(SelectedAccount));
+    }
+
+    private void ReloadAccounts()
+    {
+        Accounts.Clear();
+
+        foreach (var account in _accountStore.Accounts.Where(a => a.IsEnabled))
+            Accounts.Add(account);
+    }
+
+    public ICommand OpenAccountManagerCommand { get; }
+
+    private void ExecuteOpenAccountManager()
+    {
+        if (!_dialogService.ShowAdminLogin(_accountStore))
+            return;
+
+        _dialogService.ShowAccountManager(
+            _accountStore,
+            _owner ?? Application.Current.MainWindow,
+            _showMessage,
+            _showConfirm);
+
+        // Sau khi đóng màn hình quản lý, nạp lại danh sách + chọn lại.
+        // Ép chọn lại từ đầu vì tài khoản đang chọn có thể vừa bị sửa (mật khẩu,
+        // quyền) — nếu giữ nguyên reference thì setter bỏ qua và nút không cập nhật.
+        _selectedAccount = null;
+        ReloadAccounts();
+        SelectedAccount = Accounts.Count > 0 ? Accounts[0] : null;
+
+        Notify(nameof(SelectedAccount));
+        Notify(nameof(CanPrintDebtInvoice));
+        Notify(nameof(CanClearDebt));
     }
 
     private async void ExecuteGetLedger() => await ExecuteWithBusyAsync("Đang lấy dữ liệu sổ cái...", async req =>
@@ -418,6 +505,9 @@ public class MainViewModel : INotifyPropertyChanged
         // enable/disable đúng lúc.
         CommandManager.InvalidateRequerySuggested();
     }
+
+    private void Notify([CallerMemberName] string propertyName = "")
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     // Date Picker
     private void ExecutePickFromDate()
