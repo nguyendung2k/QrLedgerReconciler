@@ -19,7 +19,11 @@ namespace QrLedgerReconciler.Infrastructure;
 internal static class BrowserContextFactory
 {
     public const float DefaultTimeoutMs = 60_000;
-    public const int BrowserSlowMoMs = 100;
+
+    // SlowMo làm mỗi hành động của Playwright (click/fill/goto/select...) chậm
+    // thêm khoảng này. Đặt 0 để chạy nhanh nhất có thể — các luồng đã tự chờ
+    // bằng WaitForSelector/WaitForLoadState thay vì dựa vào SlowMo.
+    public const int BrowserSlowMoMs = 0;
 
     private const string ChromeChannel = "chrome";
     private const string BrowserDirectoryName = "playwright-browsers";

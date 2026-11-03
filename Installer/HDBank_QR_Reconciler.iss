@@ -1,10 +1,10 @@
 #define MyAppName "HDBank QR Reconciler"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "HDBank QR Reconciler"
 #define MyAppExeName "HDBank_QR_Reconciler.exe"
 
 #define ProjectDir "C:\Users\Admin\Desktop\Code\QrLedgerReconciler"
-#define PublishDir ProjectDir + "\bin\Release\net8.0-windows\win-x64\publish"
+#define PublishDir ProjectDir + "\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
 
 [Setup]
 

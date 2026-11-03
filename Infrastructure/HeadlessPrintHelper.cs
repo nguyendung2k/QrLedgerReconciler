@@ -85,7 +85,10 @@ internal static class HeadlessPrintHelper
     }
 
     /// <summary>
-    /// Raster hoá một trang PDF thành ảnh bitmap 300 DPI (độ rõ ngang máy in).
+    /// Raster hoá một trang PDF thành ảnh bitmap. DPI 150 là cân bằng giữa tốc
+    /// độ (raster + memory + spool) và độ rõ: hoá đơn chủ yếu là bảng văn bản,
+    /// 150 DPI vẫn đọc rõ trên giấy Letter (rộng 8.5" ≈ 1275px). Tăng lại 200
+    /// nếu cần chữ/QR sắc hơn.
     /// </summary>
     private static async Task<Bitmap> RasterizePdfPageAsync(
         Windows.Data.Pdf.PdfPage page)
@@ -95,7 +98,7 @@ internal static class HeadlessPrintHelper
             double width = page.Size.Width;
             double height = page.Size.Height;
 
-            const int targetDpi = 200;
+            const int targetDpi = 150;
             var destinationWidth = (uint)(width / 72.0 * targetDpi);
             var destinationHeight = (uint)(height / 72.0 * targetDpi);
 

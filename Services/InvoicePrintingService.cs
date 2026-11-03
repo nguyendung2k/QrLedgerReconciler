@@ -9,6 +9,28 @@ namespace QrLedgerReconciler.Services;
 
 public class InvoicePrintingService
 {
+    private const string PreviewFrameName = "saveTranFrm";
+
+    private const int CloseClickTimeoutMs = 1_000;
+    private const int ListPollIntervalMs = 100;
+    private const int ReturnToListWaitMs = 1_500;
+
+    // Nút Close của bản xem trước hoá đơn (trang EINVPrint) có markup thật:
+    //     <input type="button" class="btn" value="Close" onclick="parent.saveret();">
+    // tức là nằm trong iframe và gọi parent.saveret() để trang cha quay về
+    // danh sách. Vẫn dò thêm vài biến thể chữ hoa/thường cho chắc, nhưng
+    // KHÔNG dò ảnh/Close*.gif nữa để tránh bấm nhầm phần tử khác trên trang.
+    private static readonly string[] CloseButtonSelectors =
+    {
+        "input.btn[value='Close']",
+        "input[type='button'][value='Close']",
+        "input[value='Close']",
+        "input[value='CLOSE']",
+        "input[value='Đóng']"
+    };
+
+    private static string CloseButtonCss => string.Join(", ", CloseButtonSelectors);
+
     /// <param name="documentType">
     /// Loại chứng từ cần in: "411", "415", ... Chỉ in các link có số chứng từ
     /// bắt đầu bằng loại này. Để null/"" (hoặc "Tất cả") thì in mọi chứng từ
@@ -164,6 +186,10 @@ public class InvoicePrintingService
 
         status($"Tìm thấy {count} hóa đơn.");
 
+        // URL danh sách hoá đơn của ngày đang in — dùng để quay về danh sách
+        // sau mỗi lần in (fallback khi bấm Close không tự điều hướng được).
+        var reportUrl = page.Url;
+
         for (int i = 0; i < count; i++)
         {
             // Điểm kiểm tra Dừng / Tạm dừng — trước mỗi hoá đơn, kể cả khi
@@ -178,24 +204,33 @@ public class InvoicePrintingService
             {
                 // Re-query lại mỗi lần vì trang danh sách được tải lại sau mỗi lần in
                 var invoiceLink = InvoiceLinks(page, documentType).Nth(i);
-
-                // Số chứng từ của link hiện tại (vd "415.01234"), dùng để chọn
-                // đúng mẫu in riêng cho từng loại ngay cả khi in "Tất cả".
                 var invoiceNumber = ((await invoiceLink.InnerTextAsync()).Trim())
                     .Split(' ', '\n', '\t')[0];
 
+                // Click link và click Print có thể ồ ạt (SlowMo=0) nên thay vì
+                // await từng bước + chờ DOMContentLoaded (tốn 1 round-trip nữa),
+                // bấm xong chờ thẳng iframe saveTranFrm xuất hiện — vừa nhanh
+                // vừa đúng thời điểm, không phải đoán.
                 await invoiceLink.ClickAsync();
-                await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-
-                // Click Print
                 await page.ClickAsync("#printbtn, img[src*='Print2.gif']");
 
-                var frame = page.Frame("saveTranFrm");
+                IFrame? frame = page.Frame(PreviewFrameName);
                 if (frame == null)
                 {
-                    await page.WaitForSelectorAsync("iframe[name='saveTranFrm']",
-                        new PageWaitForSelectorOptions { Timeout = 1500 });
-                    frame = page.Frame("saveTranFrm");
+                    try
+                    {
+                        await page.WaitForSelectorAsync($"iframe[name='{PreviewFrameName}']",
+                            new PageWaitForSelectorOptions { Timeout = 1_500 });
+                    }
+                    catch (TimeoutException)
+                    {
+                        // Click Print đôi khi chưa kịp mở iframe — bấm lại một lần.
+                        await page.ClickAsync("#printbtn, img[src*='Print2.gif']");
+                        await page.WaitForSelectorAsync($"iframe[name='{PreviewFrameName}']",
+                            new PageWaitForSelectorOptions { Timeout = 1_500 });
+                    }
+
+                    frame = page.Frame(PreviewFrameName);
                 }
 
                 if (frame != null)
@@ -210,7 +245,6 @@ public class InvoicePrintingService
                         await frame.SelectOptionAsync(
                             "select",
                             new[] { new SelectOptionValue { Label = "In chứng từ giấy HĐĐT" } });
-                        await frame.WaitForTimeoutAsync(100);
                     }
 
                     await frame.ClickAsync("input[value='Chọn mẫu in'], input.btn");
@@ -284,8 +318,13 @@ body { margin: 0 auto !important; }
                     }
                 }
 
-                await InvoiceLinks(page, documentType).First.WaitForAsync(
-                    new LocatorWaitForOptions { Timeout = 2000 });
+                // In xong 1 hoá đơn: quay lại màn hình danh sách trước khi in
+                // hoá đơn tiếp theo. Bản xem trước hoá đơn (EINVPrint/iframe
+                // saveTranFrm) gồm 2 nút Print và Close — nếu trang không tự
+                // quay lại danh sách (vẫn còn dính ở màn hình xem trước) thì
+                // bấm Close rồi mở lại danh sách, để hoá đơn kế tiếp không bị
+                // in nhầm nội dung hoá đơn trước.
+                await ReturnToInvoiceListAsync(page, documentType, reportUrl, status);
 
                 status("Đã quay lại danh sách.");
             }
@@ -298,12 +337,127 @@ body { margin: 0 auto !important; }
             catch (Exception ex)
             {
                 status($"Lỗi: {ex.Message}");
+                // Nếu lỗi phát sinh ở giữa chừng (trang đang không ở màn hình
+                // danh sách) thì vẫn cần đưa trang về danh sách để hoá đơn kế
+                // tiếp không bị lấy nhầm trạng thái cũ.
+                await TryReturnToInvoiceListAsync(page, documentType, reportUrl, status);
             }
 
             await page.BringToFrontAsync();
         }
 
         status(control.IsStopped ? "=== ĐÃ DỪNG IN ===" : "=== HOÀN THÀNH IN TẤT CẢ ===");
+    }
+
+    /// <summary>
+    /// Quay lại màn hình danh sách hoá đơn sau khi in xong 1 hoá đơn.
+    ///
+    /// Sau khi in, trình duyệt thường đang ở bản xem trước hoá đơn
+    /// (iframe saveTranFrm / trang EINVPrint). Nút Close trên màn hình này
+    /// (input[value='Close']) đóng bản xem trước rồi quay về khung danh sách.
+    /// Nếu bấm Close không đưa được về danh sách (hoặc không có nút Close),
+    /// reload lại URL báo cáo để chắc chắn danh sách hoá đơn sạch và đúng.
+    /// </summary>
+    private static async Task ReturnToInvoiceListAsync(
+        IPage page,
+        string? documentType,
+        string reportUrl,
+        Action<string> status)
+    {
+        // Nút Close nằm bên trong iframe bản xem trước.
+        var frame = page.Frame(PreviewFrameName);
+        var close = frame?.Locator(CloseButtonCss).First;
+
+        if (close != null && await close.CountAsync() > 0)
+        {
+            status("Đóng bản xem trước hoá đơn (Close)...");
+            await close.ClickAsync(new() { Timeout = CloseClickTimeoutMs });
+
+            // Thay vì chờ cố định (3s trước đây), chờ tới khi danh sách hiện
+            // (tối đa ReturnToListWaitMs) — thường chỉ mất vài trăm ms.
+            if (await WaitForInvoiceListAsync(page, documentType, ReturnToListWaitMs))
+            {
+                return;
+            }
+        }
+        else
+        {
+            status("Không thấy nút Close trên bản xem trước — thử reload danh sách...");
+        }
+
+        if (await IsInvoiceListVisibleAsync(page, documentType))
+        {
+            return;
+        }
+
+        // Close không đưa về danh sách (hoặc không có nút Close) → reload
+        // lại URL báo cáo để có danh sách hoá đơn sạch cho lần in sau.
+        status("Chưa về danh sách — mở lại báo cáo...");
+        await ReloadInvoiceListAsync(page, documentType, reportUrl, status);
+    }
+
+    /// <summary>Danh sách hoá đơn đang hiển thị không? (có link chứng từ khớp loại đang in).</summary>
+    private static async Task<bool> IsInvoiceListVisibleAsync(IPage page, string? documentType)
+    {
+        try
+        {
+            return await InvoiceLinks(page, documentType).First.CountAsync() > 0;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Chờ danh sách hoá đơn xuất hiện (tối đa <paramref name="timeoutMs"/>),
+    /// poll ngắn thay vì chờ cố định — quay về nhanh khi trang trả lời nhanh.
+    /// </summary>
+    private static async Task<bool> WaitForInvoiceListAsync(
+        IPage page, string? documentType, int timeoutMs)
+    {
+        for (var waited = 0; waited < timeoutMs; waited += ListPollIntervalMs)
+        {
+            if (await IsInvoiceListVisibleAsync(page, documentType))
+            {
+                return true;
+            }
+
+            await page.WaitForTimeoutAsync(ListPollIntervalMs);
+        }
+
+        return await IsInvoiceListVisibleAsync(page, documentType);
+    }
+
+    private static async Task ReloadInvoiceListAsync(
+        IPage page,
+        string? documentType,
+        string reportUrl,
+        Action<string> status)
+    {
+        await page.GotoAsync(reportUrl,
+            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+
+        if (await WaitForInvoiceListAsync(page, documentType, ReturnToListWaitMs))
+        {
+            return;
+        }
+    }
+
+    private static async Task TryReturnToInvoiceListAsync(
+        IPage page,
+        string? documentType,
+        string reportUrl,
+        Action<string> status)
+    {
+        try
+        {
+            await ReturnToInvoiceListAsync(page, documentType, reportUrl, status);
+        }
+        catch (Exception)
+        {
+            // Bỏ qua — không để việc phục hồi danh sách che mất lỗi gốc.
+        }
     }
 
     /// <summary>
@@ -316,20 +470,21 @@ body { margin: 0 auto !important; }
         IPage page, IFrame frame, Action<string> status)
     {
         var oldUrl = frame.Url;
+        // 100 lần × 15ms = tối đa 1.5s — URL chỉ đổi khi iframe đã điều hướng.
         for (var t = 0; t < 100; t++)
         {
-            await page.WaitForTimeoutAsync(50);
+            await page.WaitForTimeoutAsync(15);
 
-            var cur = page.Frame("saveTranFrm");
+            var cur = page.Frame(PreviewFrameName);
             if (cur != null && !string.IsNullOrEmpty(cur.Url) && cur.Url != oldUrl)
             {
-                // Chờ thêm một chút để trang mới dựng nội dung
-                await page.WaitForTimeoutAsync(400);
+                // Không cần chờ thêm: nội dung hoá đơn được chờ ở trang PDF riêng
+                // (WaitForSelector "table, .VATTEMP") chứ không đọc từ iframe này.
                 return cur.Url;
             }
         }
 
-        status("Iframe không đổi URL sau 10 giây.");
+        status("Iframe không đổi URL sau 1.5 giây.");
         return null;
     }
 }
