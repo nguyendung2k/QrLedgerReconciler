@@ -42,6 +42,7 @@ public sealed class FunctionOption : INotifyPropertyChanged
 public sealed class AccountManagerViewModel : INotifyPropertyChanged
 {
     private readonly AccountStore _store;
+    private readonly SettingsStore _settings;
     private readonly Action<string> _showMessage;
     private readonly Func<string, string, MessageBoxResult> _showConfirm;
 
@@ -52,6 +53,9 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
 
     public ObservableCollection<UserAccount> Accounts => _store.Accounts;
     public ObservableCollection<FunctionOption> FunctionOptions { get; } = new();
+
+    /// <summary>Checkbox "chạy ẩn" cho tất cả chức năng đang có.</summary>
+    public ObservableCollection<FunctionOption> HeadlessOptions { get; } = new();
 
     private UserAccount? _selectedAccount;
     public UserAccount? SelectedAccount
@@ -119,13 +123,16 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
     public ICommand CancelCommand { get; }
     public ICommand CheckAllCommand { get; }
     public ICommand UncheckAllCommand { get; }
+    public ICommand SaveHeadlessCommand { get; }
 
     public AccountManagerViewModel(
         AccountStore store,
+        SettingsStore settings,
         Action<string> showMessage,
         Func<string, string, MessageBoxResult> showConfirm)
     {
         _store = store;
+        _settings = settings;
         _showMessage = showMessage;
         _showConfirm = showConfirm;
 
@@ -135,10 +142,30 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
         CancelCommand = new RelayCommand(ExecuteCancel, () => IsEditing);
         CheckAllCommand = new RelayCommand(() => SetAllFunctions(true));
         UncheckAllCommand = new RelayCommand(() => SetAllFunctions(false));
+        SaveHeadlessCommand = new RelayCommand(ExecuteSaveHeadless);
 
         // Chọn sẵn tài khoản đầu tiên cho tiện thao tác.
         if (Accounts.Count > 0)
             SelectedAccount = Accounts[0];
+
+        BuildHeadlessOptions();
+    }
+
+    private void BuildHeadlessOptions()
+    {
+        HeadlessOptions.Clear();
+
+        foreach (var function in SettingsStore.HeadlessCandidatesList)
+            HeadlessOptions.Add(new FunctionOption(function, _settings.IsHeadless(function)));
+    }
+
+    private void ExecuteSaveHeadless()
+    {
+        foreach (var option in HeadlessOptions)
+            _settings.SetHeadless(option.Function, option.IsChecked);
+
+        _settings.Save();
+        _showMessage("Đã lưu cấu hình chạy ẩn.");
     }
 
     private void ExecuteAdd()

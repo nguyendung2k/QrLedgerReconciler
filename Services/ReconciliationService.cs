@@ -14,7 +14,8 @@ public sealed class ReconciliationService
 {
     public Task<ReconciliationResult> RunAsync(
         ReconciliationRequest request,
-        Action<string> status)
+        Action<string> status,
+        bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
         {
@@ -43,7 +44,7 @@ public sealed class ReconciliationService
             var qrTotal = await GetQrTotalAsync(context, egas, request, status);
 
             return new ReconciliationResult(ledgerTotal, qrTotal);
-        });
+        }, headless);
     }
 
     private static Task<decimal> GetQrTotalAsync(
@@ -58,7 +59,8 @@ public sealed class ReconciliationService
 
     public Task<decimal> GetLedgerOnlyAsync(
         ReconciliationRequest request,
-        Action<string> status)
+        Action<string> status,
+        bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
         {
@@ -69,12 +71,13 @@ public sealed class ReconciliationService
 
             status("Đang lấy dữ liệu sổ cái...");
             return await LedgerReportReader.GetTotalAsync(context, request);
-        });
+        }, headless);
     }
 
     public Task<decimal> GetQrOnlyAsync(
         ReconciliationRequest request,
-        Action<string> status)
+        Action<string> status,
+        bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
         {
@@ -84,12 +87,13 @@ public sealed class ReconciliationService
             await EgasAuthenticator.LoginAsync(page, EgasEndpoints.BaseUrl, request);
 
             return await GetQrTotalAsync(context, page, request, status);
-        });
+        }, headless);
     }
 
     public Task ClearShiftAsync(
         ReconciliationRequest request,
-        Action<string> status)
+        Action<string> status,
+        bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
         {
@@ -111,6 +115,6 @@ public sealed class ReconciliationService
             }
 
             status("Hoàn thành.");
-        });
+        }, headless);
     }
 }

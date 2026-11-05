@@ -27,7 +27,8 @@ public class ClearDebtService
 
     public async Task<ClearDebtResult> RunAsync(
         ReconciliationRequest request,
-        Action<string> status)
+        Action<string> status,
+        bool headless = false)
     {
         return await BrowserContextFactory.RunAsync(async context =>
         {
@@ -76,7 +77,7 @@ public class ClearDebtService
 
             status($"Hoàn thành: {processedCount} khách đã clear, {errors.Count} lỗi.");
             return new ClearDebtResult(processedCount + errors.Count, processedCount, errors);
-        });
+        }, headless);
     }
 
     /// <summary>

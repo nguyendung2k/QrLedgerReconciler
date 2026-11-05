@@ -44,7 +44,8 @@ internal static class BrowserContextFactory
     /// Runs an operation using the application's persistent browser profile.
     /// </summary>
     public static async Task<T> RunAsync<T>(
-        Func<IBrowserContext, Task<T>> action)
+        Func<IBrowserContext, Task<T>> action,
+        bool headless = false)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -52,7 +53,7 @@ internal static class BrowserContextFactory
 
         Directory.CreateDirectory(ProfileDirectory);
 
-        var context = await LaunchPersistentContextAsync(playwright);
+        var context = await LaunchPersistentContextAsync(playwright, headless);
 
         context.SetDefaultTimeout(DefaultTimeoutMs);
 
@@ -70,7 +71,8 @@ internal static class BrowserContextFactory
     /// Runs an operation using a new Playwright browser context.
     /// </summary>
     public static Task RunAsync(
-        Func<IBrowserContext, Task> action)
+        Func<IBrowserContext, Task> action,
+        bool headless = false)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -78,14 +80,15 @@ internal static class BrowserContextFactory
         {
             await action(context);
             return true;
-        });
+        }, headless);
     }
 
     /// <summary>
     /// Launches Chrome/Chromium with a persistent profile directory.
     /// </summary>
     private static async Task<IBrowserContext> LaunchPersistentContextAsync(
-        IPlaywright playwright)
+        IPlaywright playwright,
+        bool headless)
     {
         try
         {
@@ -93,7 +96,7 @@ internal static class BrowserContextFactory
                 ProfileDirectory,
                 new BrowserTypeLaunchPersistentContextOptions
                 {
-                    Headless = false,
+                    Headless = headless,
                     Channel = ChromeChannel,
                     SlowMo = BrowserSlowMoMs,
                     IgnoreHTTPSErrors = true,
@@ -108,7 +111,7 @@ internal static class BrowserContextFactory
         {
             try
             {
-                return await LaunchBundledChromiumPersistentAsync(playwright);
+                return await LaunchBundledChromiumPersistentAsync(playwright, headless);
             }
             catch (Exception chromiumException)
             {
@@ -126,7 +129,8 @@ internal static class BrowserContextFactory
     /// using a persistent profile directory.
     /// </summary>
     private static async Task<IBrowserContext> LaunchBundledChromiumPersistentAsync(
-        IPlaywright playwright)
+        IPlaywright playwright,
+        bool headless)
     {
         var browserDirectory = Path.Combine(
             AppContext.BaseDirectory,
@@ -149,7 +153,7 @@ internal static class BrowserContextFactory
             ProfileDirectory,
             new BrowserTypeLaunchPersistentContextOptions
             {
-                Headless = false,
+                Headless = headless,
                 SlowMo = BrowserSlowMoMs,
                 IgnoreHTTPSErrors = true,
                 Args = new[]

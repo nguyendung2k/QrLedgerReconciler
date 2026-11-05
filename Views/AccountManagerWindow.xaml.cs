@@ -7,11 +7,12 @@ namespace QrLedgerReconciler.Views;
 public partial class AccountManagerWindow : Window
 {
     public AccountManagerWindow(AccountStore store,
+                               SettingsStore settings,
                                Action<string> showMessage,
                                Func<string, string, MessageBoxResult> showConfirm)
     {
         InitializeComponent();
-        DataContext = new AccountManagerViewModel(store, showMessage, showConfirm);
+        DataContext = new AccountManagerViewModel(store, settings, showMessage, showConfirm);
     }
 
     private void ChangeAdminPassword_Click(object sender, RoutedEventArgs e)

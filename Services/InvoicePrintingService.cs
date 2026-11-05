@@ -41,7 +41,8 @@ public class InvoicePrintingService
         string customerCode,
         Action<string> status,
         PrintControl? control = null,
-        string? documentType = null)
+        string? documentType = null,
+        bool headless = false)
     {
         // Cho phép gọi không truyền control (ví dụ test) — khi đó không có
         // ai gọi Pause/Resume/Stop nên vòng lặp chạy như bình thường.
@@ -95,7 +96,7 @@ public class InvoicePrintingService
             }
 
             status(control.IsStopped ? "⏹ Đã dừng theo yêu cầu." : "✅ Hoàn thành.");
-        });
+        }, headless);
     }
 
     private static string DescribeDocumentType(string? documentType)

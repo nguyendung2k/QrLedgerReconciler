@@ -17,7 +17,8 @@ public class ShiftProductReportService
 
     public Task RunAsync(
         ReconciliationRequest request,
-        Action<string> status)
+        Action<string> status,
+        bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
         {
@@ -41,7 +42,7 @@ public class ShiftProductReportService
             }
 
             status("Hoàn thành in Bảng phân chia sản phẩm.");
-        });
+        }, headless);
     }
 
     private static async Task ProcessOneDayAsync(

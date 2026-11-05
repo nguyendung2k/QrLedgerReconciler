@@ -18,6 +18,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly Func<string, string, MessageBoxResult> _showConfirm;
     private readonly IDialogService _dialogService;
     private readonly AccountStore _accountStore;
+    private readonly SettingsStore _settings;
     private readonly Window? _owner;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -147,12 +148,14 @@ public class MainViewModel : INotifyPropertyChanged
                          Func<string, string, MessageBoxResult> showConfirm,
                          IDialogService dialogService,
                          AccountStore accountStore,
+                         SettingsStore settings,
                          Window? owner = null)
     {
         _showMessage = showMessage;
         _showConfirm = showConfirm;
         _dialogService = dialogService;
         _accountStore = accountStore;
+        _settings = settings;
         _owner = owner;
 
         GetLedgerCommand = new RelayCommand(ExecuteGetLedger, () => CanUse(AppFunction.GetLedger));
@@ -202,6 +205,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         _dialogService.ShowAccountManager(
             _accountStore,
+            _settings,
             _owner ?? Application.Current.MainWindow,
             _showMessage,
             _showConfirm);
@@ -220,7 +224,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private async void ExecuteGetLedger() => await ExecuteWithBusyAsync("Đang lấy dữ liệu sổ cái...", async req =>
     {
-        var ledger = await _service.GetLedgerOnlyAsync(req, s => StatusText = s);
+        var ledger = await _service.GetLedgerOnlyAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.GetLedger));
         _cache = new Cache(ledger, _cache?.Qr ?? 0, req.From, req.To);
         UpdateLedgerUI(ledger, req.From, req.To);
         Log("Đã lấy dữ liệu sổ cái.");
@@ -229,7 +233,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private async void ExecuteGetQr() => await ExecuteWithBusyAsync("Đang lấy dữ liệu QR Code...", async req =>
     {
-        var qr = await _service.GetQrOnlyAsync(req, s => StatusText = s);
+        var qr = await _service.GetQrOnlyAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.GetQr));
         _cache = new Cache(_cache?.Ledger ?? 0, qr, req.From, req.To);
         UpdateQrUI(qr, req.From, req.To);
         Log("Đã lấy dữ liệu QR Code.");
@@ -238,7 +242,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private async void ExecuteReconcile() => await ExecuteWithBusyAsync("Đang kiểm tra dữ liệu...", async req =>
     {
-        var result = await _service.RunAsync(req, s => StatusText = s);
+        var result = await _service.RunAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.Reconcile));
         UpdateResultUI(result.LedgerTotal, result.QrTotal, req.From, req.To);
     });
 
@@ -251,7 +255,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         await ExecuteWithBusyAsync("Đang Clear sổ giao ca...", async req =>
         {
-            await _service.ClearShiftAsync(req, s => StatusText = s);
+            await _service.ClearShiftAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.ClearShift));
             Log("Đã hoàn thành Clear sổ giao ca.");
             _showMessage($"Đã hoàn thành. từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}");
         });
@@ -267,7 +271,7 @@ public class MainViewModel : INotifyPropertyChanged
         await ExecuteWithBusyAsync("Đang in Bảng phân chia sản phẩm...", async req =>
         {
             var service = new ShiftProductReportService();
-            await service.RunAsync(req, s => StatusText = s);
+            await service.RunAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.PrintShiftProductReport));
             Log("Đã hoàn thành in Bảng phân chia sản phẩm.");
             _showMessage($"Đã hoàn thành in Bảng phân chia sản phẩm từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}");
         });
@@ -308,7 +312,7 @@ public class MainViewModel : INotifyPropertyChanged
         try
         {
             var service = new ClearDebtService();
-            var result = await service.RunAsync(request, s => StatusText = s);
+            var result = await service.RunAsync(request, s => StatusText = s, _settings.IsHeadless(AppFunction.ClearDebt));
 
             Log($"Clear xong {result.SuccessCount} khách, {result.Errors.Count} lỗi.");
 
@@ -372,7 +376,8 @@ public class MainViewModel : INotifyPropertyChanged
                         customerCode.Trim(),
                         s => StatusText = s,
                         _printControl,
-                        DocumentType);
+                        DocumentType,
+                        _settings.IsHeadless(AppFunction.PrintDebtInvoice));
                     Log("Đã in xong tất cả hoá đơn công nợ.");
                 }
                 catch (OperationCanceledException)

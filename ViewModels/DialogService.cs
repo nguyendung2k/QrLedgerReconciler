@@ -12,7 +12,7 @@ public interface IDialogService
     bool ShowAdminLogin(AccountStore store);
 
     /// <summary>Mở màn hình quản lý tài khoản (modal, theo owner truyền vào).</summary>
-    void ShowAccountManager(AccountStore store, Window owner,
+    void ShowAccountManager(AccountStore store, SettingsStore settings, Window owner,
                             Action<string> showMessage,
                             Func<string, string, MessageBoxResult> showConfirm);
 }
@@ -35,11 +35,11 @@ public class DialogService : IDialogService
         return dialog.ShowDialog() == true && dialog.IsAuthenticated;
     }
 
-    public void ShowAccountManager(AccountStore store, Window owner,
+    public void ShowAccountManager(AccountStore store, SettingsStore settings, Window owner,
                                    Action<string> showMessage,
                                    Func<string, string, MessageBoxResult> showConfirm)
     {
-        var window = new Views.AccountManagerWindow(store, showMessage, showConfirm)
+        var window = new Views.AccountManagerWindow(store, settings, showMessage, showConfirm)
         {
             Owner = owner,
         };

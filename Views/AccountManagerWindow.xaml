@@ -175,6 +175,10 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Text="Danh sách tài khoản" Style="{StaticResource SectionTitle}"/>
@@ -209,6 +213,25 @@
                     <Button Content="Thêm" Style="{StaticResource PrimaryButton}" Command="{Binding AddCommand}"/>
                     <Button Content="Xoá" Style="{StaticResource DangerButton}" Margin="0" Command="{Binding DeleteCommand}"/>
                 </UniformGrid>
+
+                <!-- Chạy ẩn (headless) -->
+                <TextBlock Grid.Row="6" Text="Chạy ẩn (không mở Chrome)" Style="{StaticResource SectionTitle}"/>
+
+                <StackPanel Grid.Row="8">
+                    <ItemsControl ItemsSource="{Binding HeadlessOptions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Style="{StaticResource FunctionCheckbox}"
+                                          Content="{Binding DisplayName}"
+                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Content="Lưu cấu hình chạy ẩn" Style="{StaticResource SecondaryButton}"
+                            Margin="0,8,0,0" HorizontalAlignment="Left"
+                            Command="{Binding SaveHeadlessCommand}"/>
+                </StackPanel>
             </Grid>
         </Border>
 

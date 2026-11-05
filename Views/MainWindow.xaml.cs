@@ -15,12 +15,14 @@ public partial class MainWindow : Window
 
         var dialogService = new DialogService();
         var accountStore = AccountStore.Load();
+        var settings = SettingsStore.Load();
 
         _viewModel = new MainViewModel(
             message => MessageBox.Show(message, "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information),
             (title, message) => MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question),
             dialogService,
             accountStore,
+            settings,
             this
         );
 
