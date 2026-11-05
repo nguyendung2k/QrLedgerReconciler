@@ -18,7 +18,8 @@ internal static class ShiftInvoiceProcessor
         IBrowserContext context,
         IPage page,
         DateTime day,
-        Action<string> status)
+        Action<string> status,
+        RunControl control)
     {
         status($"Ngày {day:dd/MM/yyyy}");
 
@@ -48,6 +49,8 @@ internal static class ShiftInvoiceProcessor
 
         while (pending.Count > 0)
         {
+            await control.CheckpointAsync(status);
+
             var shiftInfo = pending.Dequeue();
 
             // Ca đầu dùng danh sách đang mở; ca sau mở lại danh sách theo ngày.

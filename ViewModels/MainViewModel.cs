@@ -59,9 +59,13 @@ public class MainViewModel : INotifyPropertyChanged
             Notify();
             Notify(nameof(SelectedAccountName));
             Notify(nameof(CanPrintDebtInvoice));
+            Notify(nameof(CanEditCustomerCode));
             Notify(nameof(CanClearDebt));
 
-            // Thay đổi tài khoản → khoá/mở các nút theo quyền.
+            // Danh sách chức năng bên trái chỉ chứa các chức năng được cấp quyền
+            // cho tài khoản đang chọn → nạp lại khi đổi tài khoản.
+            RefreshFunctionList();
+
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -116,28 +120,115 @@ public class MainViewModel : INotifyPropertyChanged
 
 
 
-    // Trạng thái riêng cho phiên in hoá đơn công nợ (điều khiển bởi Tạm dừng/Tiếp tục/Kết thúc)
-    private bool _isPrinting;
-    public bool IsPrinting { get => _isPrinting; set => SetProperty(ref _isPrinting, value); }
+    // ----- Trạng thái chạy -----
+    // Chỉ một chức năng được chạy tại một thời điểm vì mọi chức năng dùng chung
+    // một profile Chrome cố định. _run khác null <=> đang có chức năng chạy.
+    private RunControl? _run;
 
-    private bool _isPrintPaused;
-    public bool IsPrintPaused { get => _isPrintPaused; set => SetProperty(ref _isPrintPaused, value); }
+    public bool IsRunning => _run is not null;
 
-    private PrintControl? _printControl;
+    /// <summary>Khoá toàn bộ ô nhập liệu khi đang chạy chức năng.</summary>
+    public bool CanEditInputs => !IsRunning;
+
+    /// <summary>Ô mã khách hàng + loại chứng từ: cần quyền In công nợ và không đang chạy.</summary>
+    public bool CanEditCustomerCode => !IsRunning && CanPrintDebtInvoice;
+
+    /// <summary>Nút "Dừng toàn bộ" luôn hiển thị, chỉ bật khi có chức năng đang chạy.</summary>
+    public bool CanStopAll => IsRunning;
+
+    // Tạm dừng/Tiếp tục/Kết thúc chỉ áp dụng cho In công nợ.
+    public bool IsPrinting => _run?.Function == AppFunction.PrintDebtInvoice;
+    public bool IsPrintPaused => _run?.IsPaused == true;
+
+    // ----- Chọn chức năng (menu bên trái) -----
+    // Ứng dụng chỉ hiển thị ô nhập + nút chạy của chức năng đang chọn.
+    public ObservableCollection<FunctionItem> Functions { get; } = new();
+
+    private FunctionItem? _selectedFunction;
+    public FunctionItem? SelectedFunction
+    {
+        get => _selectedFunction;
+        set
+        {
+            if (ReferenceEquals(_selectedFunction, value)) return;
+
+            _selectedFunction = value;
+
+            NotifySelectionChanged();
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    private void NotifySelectionChanged()
+    {
+        Notify(nameof(SelectedFunction));
+        Notify(nameof(SelectedFunctionName));
+        Notify(nameof(HasSelectedFunction));
+        Notify(nameof(HasNoSelectedFunction));
+        Notify(nameof(ShowsDateRange));
+        Notify(nameof(ShowCustomerFields));
+        Notify(nameof(ShowPrintControls));
+    }
+
+    public string SelectedFunctionName => _selectedFunction?.DisplayName ?? string.Empty;
+
+    public bool HasSelectedFunction => _selectedFunction is not null;
+
+    /// <summary>Tài khoản không có quyền chức năng nào (hoặc chưa có tài khoản).</summary>
+    public bool HasNoSelectedFunction => _selectedFunction is null;
+
+    private AppFunction? SelectedAppFunction => _selectedFunction?.Function;
+
+    // Chức năng đang chọn có cần ô Từ ngày / Đến ngày không.
+    // Clear công nợ tự tính tháng trước nên không dùng khoảng ngày.
+    public bool ShowsDateRange => HasSelectedFunction && SelectedAppFunction != AppFunction.ClearDebt;
+
+    // Ô mã khách hàng + loại chứng từ chỉ thuộc chức năng In công nợ.
+    public bool ShowCustomerFields => SelectedAppFunction == AppFunction.PrintDebtInvoice;
+
+    // Nút chạy chính ở khung bên phải.
+    public ICommand RunSelectedFunctionCommand { get; }
+
+    /// <summary>
+    /// Nạp lại menu chức năng theo quyền của tài khoản đang chọn.
+    /// Giữ nguyên chức năng đang chọn nếu tài khoản mới vẫn có quyền đó,
+    /// ngược lại chọn chức năng đầu tiên.
+    /// </summary>
+    private void RefreshFunctionList()
+    {
+        var previous = _selectedFunction?.Function;
+
+        Functions.Clear();
+        foreach (var function in AppFunctionExtensions.AllFunctions)
+        {
+            if (CanUse(function))
+                Functions.Add(new FunctionItem(function));
+        }
+
+        var keep = Functions.FirstOrDefault(f => f.Function == previous);
+        SetSelectedFunctionSilently(keep ?? Functions.FirstOrDefault());
+    }
+
+    private void SetSelectedFunctionSilently(FunctionItem? item)
+    {
+        // Gán field trực tiếp thay vì qua setter: list vừa được dựng lại, setter
+        // sẽ so sánh reference và có thể bỏ qua item mới cùng chức năng.
+        _selectedFunction = item;
+
+        NotifySelectionChanged();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    /// <summary>Hàng điều khiển Tạm dừng / Tiếp tục / Kết thúc — chỉ khi in công nợ đang chạy.</summary>
+    public bool ShowPrintControls => IsPrinting;
 
     // Commands
-    public ICommand GetLedgerCommand { get; }
-    public ICommand GetQrCommand { get; }
-    public ICommand RunReconcileCommand { get; }
-    public ICommand ClearShiftCommand { get; }
-    public ICommand ClearDebtCommand { get; }
     public ICommand PickFromDateCommand { get; }
     public ICommand PickToDateCommand { get; }
-    public ICommand PrintDebtInvoiceCommand { get; }
-    public ICommand PrintShiftProductReportCommand { get; }
     public ICommand PauseCommand { get; }
     public ICommand ResumeCommand { get; }
     public ICommand StopCommand { get; }
+    public ICommand StopAllCommand { get; }
 
     private Cache? _cache;
     private record Cache(decimal Ledger, decimal Qr, DateTime From, DateTime To);
@@ -158,25 +249,23 @@ public class MainViewModel : INotifyPropertyChanged
         _settings = settings;
         _owner = owner;
 
-        GetLedgerCommand = new RelayCommand(ExecuteGetLedger, () => CanUse(AppFunction.GetLedger));
-        GetQrCommand = new RelayCommand(ExecuteGetQr, () => CanUse(AppFunction.GetQr));
-        RunReconcileCommand = new RelayCommand(ExecuteReconcile, () => CanUse(AppFunction.Reconcile));
-        ClearShiftCommand = new RelayCommand(ExecuteClearShift, () => CanUse(AppFunction.ClearShift));
-        ClearDebtCommand = new RelayCommand(ExecuteClearDebt, () => CanUse(AppFunction.ClearDebt));
         PickFromDateCommand = new RelayCommand(ExecutePickFromDate);
         PickToDateCommand = new RelayCommand(ExecutePickToDate);
-
-        PrintDebtInvoiceCommand = new RelayCommand<string>(ExecutePrintDebtInvoices,
-            _ => CanUse(AppFunction.PrintDebtInvoice) && !IsPrinting);
-
-        PrintShiftProductReportCommand = new RelayCommand(ExecutePrintShiftProductReport,
-            () => CanUse(AppFunction.PrintShiftProductReport));
 
         PauseCommand = new RelayCommand(ExecutePause, () => IsPrinting && !IsPrintPaused);
         ResumeCommand = new RelayCommand(ExecuteResume, () => IsPrinting && IsPrintPaused);
         StopCommand = new RelayCommand(ExecuteStop, () => IsPrinting);
 
-        OpenAccountManagerCommand = new RelayCommand(ExecuteOpenAccountManager);
+        // Mọi chức năng đều có thể bị buộc dừng, không riêng In công nợ.
+        StopAllCommand = new RelayCommand(ExecuteStopAll, () => CanStopAll);
+
+        RunSelectedFunctionCommand = new RelayCommand(
+            ExecuteSelectedFunction,
+            () => HasSelectedFunction
+                  && _selectedAccount?.CanUse(SelectedAppFunction!.Value) == true
+                  && !IsRunning);
+
+        OpenAccountManagerCommand = new RelayCommand(ExecuteOpenAccountManager, () => !IsRunning);
 
         HasResults = false;
 
@@ -184,6 +273,10 @@ public class MainViewModel : INotifyPropertyChanged
 
         // Chọn tài khoản đầu tiên đang hoạt động (nếu có) để không phải chọn tay.
         SelectedAccount = Accounts.Count > 0 ? Accounts[0] : null;
+
+        // Không có tài khoản nào thì setter ở trên bỏ qua (null == null),
+        // nên luôn gọi tường minh để menu chức năng được khởi tạo (rỗng).
+        RefreshFunctionList();
 
         Notify(nameof(SelectedAccount));
     }
@@ -219,32 +312,91 @@ public class MainViewModel : INotifyPropertyChanged
 
         Notify(nameof(SelectedAccount));
         Notify(nameof(CanPrintDebtInvoice));
+        Notify(nameof(CanEditCustomerCode));
         Notify(nameof(CanClearDebt));
+
+        // Quyền có thể vừa thay đổi → dựng lại menu chức năng.
+        RefreshFunctionList();
     }
 
-    private async void ExecuteGetLedger() => await ExecuteWithBusyAsync("Đang lấy dữ liệu sổ cái...", async req =>
+    /// <summary>
+    /// Nút chạy duy nhất ở khung chi tiết: chạy chức năng đang chọn trong menu trái.
+    /// </summary>
+    private void ExecuteSelectedFunction()
     {
-        var ledger = await _service.GetLedgerOnlyAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.GetLedger));
-        _cache = new Cache(ledger, _cache?.Qr ?? 0, req.From, req.To);
-        UpdateLedgerUI(ledger, req.From, req.To);
-        Log("Đã lấy dữ liệu sổ cái.");
-        HasResults = true;
-    });
+        switch (SelectedAppFunction)
+        {
+            case AppFunction.GetLedger:
+                ExecuteGetLedger();
+                break;
+            case AppFunction.GetQr:
+                ExecuteGetQr();
+                break;
+            case AppFunction.Reconcile:
+                ExecuteReconcile();
+                break;
+            case AppFunction.ClearShift:
+                ExecuteClearShift();
+                break;
+            case AppFunction.PrintDebtInvoice:
+                ExecutePrintDebtInvoices(CustomerCode);
+                break;
+            case AppFunction.PrintShiftProductReport:
+                ExecutePrintShiftProductReport();
+                break;
+            case AppFunction.ClearDebt:
+                ExecuteClearDebt();
+                break;
+        }
+    }
 
-    private async void ExecuteGetQr() => await ExecuteWithBusyAsync("Đang lấy dữ liệu QR Code...", async req =>
+    private async void ExecuteGetLedger()
     {
-        var qr = await _service.GetQrOnlyAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.GetQr));
-        _cache = new Cache(_cache?.Ledger ?? 0, qr, req.From, req.To);
-        UpdateQrUI(qr, req.From, req.To);
-        Log("Đã lấy dữ liệu QR Code.");
-        HasResults = true;
-    });
+        if (!TryGetRequest(out var req)) return;
 
-    private async void ExecuteReconcile() => await ExecuteWithBusyAsync("Đang kiểm tra dữ liệu...", async req =>
+        await RunExclusiveAsync(AppFunction.GetLedger, "Đang lấy dữ liệu sổ cái...", async control =>
+        {
+            var ledger = await _service.GetLedgerOnlyAsync(
+                req, s => StatusText = s, control,
+                _settings.IsHeadless(AppFunction.GetLedger));
+
+            _cache = new Cache(ledger, _cache?.Qr ?? 0, req.From, req.To);
+            UpdateLedgerUI(ledger, req.From, req.To);
+            Log("Đã lấy dữ liệu sổ cái.");
+            HasResults = true;
+        });
+    }
+
+    private async void ExecuteGetQr()
     {
-        var result = await _service.RunAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.Reconcile));
-        UpdateResultUI(result.LedgerTotal, result.QrTotal, req.From, req.To);
-    });
+        if (!TryGetRequest(out var req)) return;
+
+        await RunExclusiveAsync(AppFunction.GetQr, "Đang lấy dữ liệu QR Code...", async control =>
+        {
+            var qr = await _service.GetQrOnlyAsync(
+                req, s => StatusText = s, control,
+                _settings.IsHeadless(AppFunction.GetQr));
+
+            _cache = new Cache(_cache?.Ledger ?? 0, qr, req.From, req.To);
+            UpdateQrUI(qr, req.From, req.To);
+            Log("Đã lấy dữ liệu QR Code.");
+            HasResults = true;
+        });
+    }
+
+    private async void ExecuteReconcile()
+    {
+        if (!TryGetRequest(out var req)) return;
+
+        await RunExclusiveAsync(AppFunction.Reconcile, "Đang kiểm tra dữ liệu...", async control =>
+        {
+            var result = await _service.RunAsync(
+                req, s => StatusText = s, control,
+                _settings.IsHeadless(AppFunction.Reconcile));
+
+            UpdateResultUI(result.LedgerTotal, result.QrTotal, req.From, req.To);
+        });
+    }
 
     private async void ExecuteClearShift()
     {
@@ -253,9 +405,11 @@ public class MainViewModel : INotifyPropertyChanged
         if (_showConfirm("Xác nhận", $"Thao tác sẽ xử lý từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}.\n\nTiếp tục?") != MessageBoxResult.Yes)
             return;
 
-        await ExecuteWithBusyAsync("Đang Clear sổ giao ca...", async req =>
+        await RunExclusiveAsync(AppFunction.ClearShift, "Đang Clear sổ giao ca...", async control =>
         {
-            await _service.ClearShiftAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.ClearShift));
+            await _service.ClearShiftAsync(req, s => StatusText = s, control,
+                _settings.IsHeadless(AppFunction.ClearShift));
+
             Log("Đã hoàn thành Clear sổ giao ca.");
             _showMessage($"Đã hoàn thành. từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}");
         });
@@ -268,10 +422,12 @@ public class MainViewModel : INotifyPropertyChanged
         if (_showConfirm("Xác nhận", $"Sẽ in Bảng phân chia sản phẩm cho tất cả ca từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}.\n\nTiếp tục?") != MessageBoxResult.Yes)
             return;
 
-        await ExecuteWithBusyAsync("Đang in Bảng phân chia sản phẩm...", async req =>
+        await RunExclusiveAsync(AppFunction.PrintShiftProductReport, "Đang in Bảng phân chia sản phẩm...", async control =>
         {
             var service = new ShiftProductReportService();
-            await service.RunAsync(req, s => StatusText = s, _settings.IsHeadless(AppFunction.PrintShiftProductReport));
+            await service.RunAsync(req, s => StatusText = s, control,
+                _settings.IsHeadless(AppFunction.PrintShiftProductReport));
+
             Log("Đã hoàn thành in Bảng phân chia sản phẩm.");
             _showMessage($"Đã hoàn thành in Bảng phân chia sản phẩm từ {req.From:dd/MM/yyyy} đến {req.To:dd/MM/yyyy}");
         });
@@ -306,29 +462,19 @@ public class MainViewModel : INotifyPropertyChanged
         var request = new ReconciliationRequest(
             UserName.Trim(), Password, toDate.AddDays(-1).Date, toDate);
 
-        IsBusy = true;
-        StatusText = $"Đang clear công nợ tháng {toDate:MM/yyyy}...";
-
-        try
+        await RunExclusiveAsync(AppFunction.ClearDebt,
+            $"Đang clear công nợ tháng {toDate:MM/yyyy}...", async control =>
         {
             var service = new ClearDebtService();
-            var result = await service.RunAsync(request, s => StatusText = s, _settings.IsHeadless(AppFunction.ClearDebt));
+            var result = await service.RunAsync(request, s => StatusText = s, control,
+                _settings.IsHeadless(AppFunction.ClearDebt));
 
             Log($"Clear xong {result.SuccessCount} khách, {result.Errors.Count} lỗi.");
 
             _showMessage(result.Errors.Count == 0
                 ? $"Đã clear xong tất cả {result.SuccessCount} khách."
                 : $"Clear xong {result.SuccessCount} khách.\n{result.Errors.Count} lỗi:\n{string.Join("\n", result.Errors)}");
-        }
-        catch (Exception ex)
-        {
-            HandleError(ex);
-        }
-        finally
-        {
-            IsBusy = false;
-            StatusText = "Hoàn thành.";
-        }
+        });
     }
 
     /// <summary>23:58 ngày cuối cùng của tháng trước.</summary>
@@ -358,87 +504,130 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (IsPrinting) return; // phòng trường hợp CanExecute chưa kịp requery
+        if (!TryGetRequest(out var req)) return;
 
-        _printControl = new PrintControl();
-        IsPrinting = true;
-        IsPrintPaused = false;
-
-        try
+        await RunExclusiveAsync(AppFunction.PrintDebtInvoice, "Đang in hoá đơn công nợ...", async control =>
         {
-            await ExecuteWithBusyAsync("Đang in hoá đơn công nợ...", async req =>
-            {
-                var service = new InvoicePrintingService();
-                try
-                {
-                    await service.PrintDebtInvoicesAsync(
-                        req,
-                        customerCode.Trim(),
-                        s => StatusText = s,
-                        _printControl,
-                        DocumentType,
-                        _settings.IsHeadless(AppFunction.PrintDebtInvoice));
-                    Log("Đã in xong tất cả hoá đơn công nợ.");
-                }
-                catch (OperationCanceledException)
-                {
-                    Log("Đã dừng in hoá đơn theo yêu cầu.");
-                }
-            });
-        }
-        finally
-        {
-            // Nếu người dùng bấm Kết thúc, giữ nguyên thông báo "Đã dừng" thay vì
-            // để ExecuteWithBusyAsync ghi đè thành "Hoàn thành."
-            if (_printControl?.IsStopped == true)
-                StatusText = "Đã dừng in hoá đơn.";
+            var service = new InvoicePrintingService();
+            await service.PrintDebtInvoicesAsync(
+                req,
+                customerCode.Trim(),
+                s => StatusText = s,
+                control,
+                DocumentType,
+                _settings.IsHeadless(AppFunction.PrintDebtInvoice));
 
-            IsPrinting = false;
-            IsPrintPaused = false;
-            _printControl = null;
-        }
+            Log("Đã in xong tất cả hoá đơn công nợ.");
+        });
     }
 
     private void ExecutePause()
     {
-        _printControl?.Pause();
-        IsPrintPaused = true;
+        _run?.Pause();
+        NotifyRunStateChanged();
     }
 
     private void ExecuteResume()
     {
-        _printControl?.Resume();
-        IsPrintPaused = false;
+        _run?.Resume();
+        NotifyRunStateChanged();
     }
 
     private void ExecuteStop()
     {
-        _printControl?.Stop();
+        _run?.Stop();
         StatusText = "Đang dừng...";
+
+        // Đang tạm dừng thì nút Tiếp tục/Kết thúc cũng phải đổi trạng thái ngay:
+        // Stop() huỷ token nên CanExecute bị tính lại ngay sau đây.
+        NotifyRunStateChanged();
     }
 
-    private async Task ExecuteWithBusyAsync(string initialStatus, Func<ReconciliationRequest, Task> operation)
+    /// <summary>
+    /// Dừng toàn bộ: buộc dừng ngay lập tức chức năng đang chạy (bất kể là
+    /// chức năng nào) bằng cách huỷ token + đóng trình duyệt đang mở.
+    /// </summary>
+    private void ExecuteStopAll()
     {
-        if (!TryGetRequest(out var request)) return;
+        if (_run is null) return;
 
+        StatusText = "Đang dừng toàn bộ...";
+        _run.ForceStop();
+        NotifyRunStateChanged();
+    }
+
+    /// <summary>
+    /// Bộ chạy chung: đảm bảo tại một thời điểm chỉ có một chức năng chạy và
+    /// khoá mọi chức năng/ô nhập khác trong lúc đó.
+    /// </summary>
+    private async Task RunExclusiveAsync(
+        AppFunction function,
+        string initialStatus,
+        Func<RunControl, Task> operation)
+    {
+        if (IsRunning) return;
+
+        var control = new RunControl { Function = function };
+        _run = control;
         IsBusy = true;
         StatusText = initialStatus;
+        NotifyRunStateChanged();
+
+        // Trạng thái cuối cùng phải phản ánh đúng kết quả. Trước đây khi lỗi
+        // xảy ra vẫn ghi "Hoàn thành." — người dùng dễ tưởng đã xong việc.
+        var finalStatus = "Hoàn thành.";
 
         try
         {
-            await operation(request);
+            await operation(control);
+        }
+        catch (Exception) when (control.ForceStopRequested)
+        {
+            // Người dùng đã bấm Dừng toàn bộ. Khi ForceStop đóng trình duyệt,
+            // lỗi thật sự ném ra có thể là PlaywrightException đã bị service
+            // bọc lại thành Exception thường — không được hiển thị như lỗi.
+            Log("Đã dừng theo yêu cầu.");
+            finalStatus = "Đã dừng theo yêu cầu.";
+        }
+        catch (OperationCanceledException)
+        {
+            Log("Đã dừng theo yêu cầu.");
+            finalStatus = "Đã dừng theo yêu cầu.";
         }
         catch (Exception ex)
         {
             HandleError(ex);
+            finalStatus = "Có lỗi xảy ra.";
         }
         finally
         {
+            _run = null;
             IsBusy = false;
-            StatusText = "Hoàn thành.";
+            StatusText = finalStatus;
+            NotifyRunStateChanged();
+
+            // Chạy xong mới giải phóng: từ đây không còn ai dùng token nữa.
+            control.Dispose();
         }
     }
 
+    /// <summary>
+    /// Phát PropertyChanged cho các property suy ra từ trạng thái chạy.
+    ///
+    /// IsRunning/IsPrinting/... được tính từ _run nên không đi qua SetProperty;
+    /// vì vậy phải tự thông báo và tự ép WPF gọi lại CanExecute của mọi command.
+    /// </summary>
+    private void NotifyRunStateChanged()
+    {
+        Notify(nameof(IsRunning));
+        Notify(nameof(IsPrinting));
+        Notify(nameof(IsPrintPaused));
+        Notify(nameof(CanEditInputs));
+        Notify(nameof(CanEditCustomerCode));
+        Notify(nameof(CanStopAll));
+        Notify(nameof(ShowPrintControls));
+        CommandManager.InvalidateRequerySuggested();
+    }
     private bool TryGetRequest(out ReconciliationRequest request)
     {
         request = null!;

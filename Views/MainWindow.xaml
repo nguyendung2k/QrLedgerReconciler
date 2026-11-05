@@ -3,12 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:QrLedgerReconciler.Converters"
         xmlns:controls="clr-namespace:QrLedgerReconciler.Controls"
-        Title="Đối chiếu Sổ cái - QR tĩnh HDBank"
-        Height="600"
-        Width="460"
-        MinHeight="480"
-        MaxHeight="900"
-        MinWidth="440"
+        Title="EGAS"
+        Height="640"
+        Width="820"
+        MinHeight="520"
+        MinWidth="760"
         WindowStartupLocation="CenterScreen"
         Background="#F3F4F6"
         FontFamily="Segoe UI">
@@ -17,18 +16,22 @@
         <!-- Converter -->
         <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-        <!-- Palette -->
-        <SolidColorBrush x:Key="AccentBrush" Color="#4F46E5"/>
+        <!-- Palette: mỗi vai trò một màu riêng, không dùng lẫn giữa các nhóm nút -->
+        <SolidColorBrush x:Key="AccentBrush" Color="#4F46E5"/>          <!-- Đối chiếu -->
         <SolidColorBrush x:Key="AccentBrushHover" Color="#4338CA"/>
-        <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
-        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#16A34A"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>         <!-- Chức năng ghi dữ liệu -->
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>          <!-- Dừng toàn bộ / Kết thúc -->
+        <SolidColorBrush x:Key="SuccessBrush" Color="#16A34A"/>         <!-- Tiếp tục -->
+        <SolidColorBrush x:Key="PauseButtonBrush" Color="#0EA5E9"/>     <!-- Tạm dừng -->
+        <SolidColorBrush x:Key="PrintButtonBrush" Color="#475569"/>     <!-- In -->
         <SolidColorBrush x:Key="TextPrimaryBrush" Color="#111827"/>
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B7280"/>
         <SolidColorBrush x:Key="TextTertiaryBrush" Color="#9CA3AF"/>
         <SolidColorBrush x:Key="BorderBrushLight" Color="#E5E7EB"/>
         <SolidColorBrush x:Key="InputBorderBrush" Color="#D1D5DB"/>
         <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="MenuBrush" Color="#EEF2FF"/>
+        <SolidColorBrush x:Key="MenuItemHoverBrush" Color="#E0E7FF"/>
 
         <!-- Styles -->
         <Style x:Key="Card" TargetType="Border">
@@ -151,9 +154,8 @@
             <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
         </Style>
 
-        <!-- Nút điều khiển ca / in hoá đơn -->
         <Style x:Key="PauseButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
-            <Setter Property="Background" Value="#F59E0B"/>
+            <Setter Property="Background" Value="{StaticResource PauseButtonBrush}"/>
         </Style>
 
         <Style x:Key="ResumeButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
@@ -165,7 +167,45 @@
         </Style>
 
         <Style x:Key="PrintButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
-            <Setter Property="Background" Value="#374151"/>
+            <Setter Property="Background" Value="{StaticResource PrintButtonBrush}"/>
+        </Style>
+
+        <!-- Mục trong menu chức năng bên trái -->
+        <Style x:Key="MenuListBox" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        </Style>
+
+        <Style x:Key="MenuItemContainer" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bg" Background="Transparent"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource MenuItemHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- Hàng kết quả dạng nhãn : giá trị, gọn hơn 3 card riêng lẻ -->
@@ -185,226 +225,228 @@
         </Style>
     </Window.Resources>
 
-    <!-- Height cửa sổ cố định (không SizeToContent) để nội dung dài thì
-         cuộn bên trong, chiều cao cửa sổ không nhảy theo kết quả in. -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                  Padding="0,0,6,0">
-        <Grid Margin="18">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <!-- 0: Tiêu đề -->
-                <RowDefinition Height="14"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 2: Đăng nhập -->
-                <RowDefinition Height="10"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 4: Ngày -->
-                <RowDefinition Height="10"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 6: Mã khách hàng -->
-                <RowDefinition Height="10"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 8: Buttons chính -->
-                <RowDefinition Height="6"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 10: Buttons điều khiển in -->
-                <RowDefinition Height="8"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 12: Nút In Bảng phân chia sản phẩm -->
-                <RowDefinition Height="8"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 14: Nút Clear công nợ tháng -->
-                <RowDefinition Height="10"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 16: Progress -->
-                <RowDefinition Height="10"/>
-                <RowDefinition Height="Auto"/>
-                <!-- 18: Kết quả — Auto: không chiếm chỗ khi chưa có kết quả -->
-            </Grid.RowDefinitions>
+    <Grid Margin="18">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-            <!-- Tiêu đề -->
-            <StackPanel Grid.Row="0">
-                <TextBlock Text="Đối chiếu Sổ cái &amp; QR tĩnh HDBank"
-                           FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                <TextBlock Text="Tài khoản 112716  ·  Bán hàng thanh toán QR Code tĩnh"
-                           Margin="0,3,0,0" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-            </StackPanel>
-
-            <!-- Đăng nhập -->
-            <Border Grid.Row="2" Style="{StaticResource Card}">
-                <StackPanel>
-                    <Grid Margin="0,0,0,8">
-                        <TextBlock Text="Đăng nhập EGAS" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center"/>
-                        <Button Content="Quản lý tài khoản" HorizontalAlignment="Right"
-                                Height="24" Padding="8,0" FontSize="10.5"
-                                Style="{StaticResource SecondaryButton}" Margin="0"
-                                Command="{Binding OpenAccountManagerCommand}"/>
-                    </Grid>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Tài khoản EGAS" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox Style="{StaticResource ModernComboBox}"
-                                      ItemsSource="{Binding Accounts}"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Mật khẩu EGAS" Style="{StaticResource FieldLabel}"/>
-                            <controls:PasswordInput Password="{Binding Password, Mode=TwoWay}"/>
-                        </StackPanel>
-                    </Grid>
+        <!-- ==================== MENU CHỨC NĂNG (TRÁI) ==================== -->
+        <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="2,0,2,10">
+                    <TextBlock Text="EGAS"
+                               FontSize="20" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="Chọn chức năng" Margin="0,4,0,0"
+                               FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
-            </Border>
 
-            <!-- Ngày -->
-            <Border Grid.Row="4" Style="{StaticResource Card}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                <Border DockPanel.Dock="Bottom" Margin="0,10,0,0" Padding="0,10,0,0"
+                        BorderBrush="{StaticResource BorderBrushLight}" BorderThickness="0,1,0,0">
+                    <Button Content="⏹ Dừng toàn bộ" Height="36"
+                            Style="{StaticResource StopButton}" Margin="0"
+                            Command="{Binding StopAllCommand}"/>
+                </Border>
 
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Từ ngày" Style="{StaticResource FieldLabel}"/>
+                <ListBox Style="{StaticResource MenuListBox}"
+                         ItemContainerStyle="{StaticResource MenuItemContainer}"
+                         ItemsSource="{Binding Functions}"
+                         SelectedItem="{Binding SelectedFunction, Mode=TwoWay}"
+                         IsEnabled="{Binding CanEditInputs}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- ==================== CHI TIẾT CHỨC NĂNG (PHẢI) ==================== -->
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled" Padding="0,0,6,0">
+            <StackPanel>
+
+                <!-- Đăng nhập: luôn hiển thị, khoá khi đang chạy -->
+                <Border Style="{StaticResource Card}" IsEnabled="{Binding CanEditInputs}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <TextBlock Text="Đăng nhập EGAS" Style="{StaticResource SectionTitle}"
+                                       Margin="0" VerticalAlignment="Center"/>
+                            <Button Content="Quản lý tài khoản" HorizontalAlignment="Right"
+                                    Height="24" Padding="8,0" FontSize="10.5"
+                                    Style="{StaticResource SecondaryButton}" Margin="0"
+                                    Command="{Binding OpenAccountManagerCommand}"/>
+                        </Grid>
+
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="6"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" Style="{StaticResource ModernTextBox}"
-                                     Text="{Binding FromDate, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Định dạng: dd/MM/yyyy HH:mm — ví dụ 17/07/2026 08:00"/>
 
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Tài khoản EGAS" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox Style="{StaticResource ModernComboBox}"
+                                          ItemsSource="{Binding Accounts}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Mật khẩu EGAS" Style="{StaticResource FieldLabel}"/>
+                                <controls:PasswordInput Password="{Binding Password, Mode=TwoWay}"/>
+                            </StackPanel>
                         </Grid>
-                        <TextBlock Text="dd/MM/yyyy HH:mm" Margin="2,4,0,0" FontSize="10"
-                                   Foreground="{StaticResource TextTertiaryBrush}"/>
                     </StackPanel>
+                </Border>
 
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Đến ngày" Style="{StaticResource FieldLabel}"/>
-                        <Grid>
+                <!-- Chưa chọn chức năng nào -->
+                <Border Style="{StaticResource Card}" Margin="0,10,0,0"
+                        Visibility="{Binding HasNoSelectedFunction, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="Tài khoản này chưa được cấp chức năng nào. Vào Quản lý tài khoản để cấp quyền."
+                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- Khung chức năng đang chọn -->
+                <Border Style="{StaticResource Card}" Margin="0,10,0,0"
+                        Visibility="{Binding HasSelectedFunction, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding SelectedFunctionName}"
+                                   FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="{Binding SelectedFunction.Description}"
+                                   Margin="0,4,0,0" FontSize="11.5" TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                        <!-- Từ ngày / Đến ngày: ẩn với chức năng tự tính khoảng thời gian -->
+                        <Grid Margin="0,14,0,0"
+                              Visibility="{Binding ShowsDateRange, Converter={StaticResource BoolToVis}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="6"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" Style="{StaticResource ModernTextBox}"
-                                     Text="{Binding ToDate, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Định dạng: dd/MM/yyyy HH:mm — ví dụ 17/07/2026 23:59"/>
+
+                            <StackPanel Grid.Column="0" IsEnabled="{Binding CanEditInputs}">
+                                <TextBlock Text="Từ ngày" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding FromDate, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Định dạng: dd/MM/yyyy HH:mm — ví dụ 17/07/2026 08:00"/>
+                                <TextBlock Text="dd/MM/yyyy HH:mm" Margin="2,4,0,0" FontSize="10"
+                                           Foreground="{StaticResource TextTertiaryBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" IsEnabled="{Binding CanEditInputs}">
+                                <TextBlock Text="Đến ngày" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding ToDate, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Định dạng: dd/MM/yyyy HH:mm — ví dụ 17/07/2026 23:59"/>
+                                <TextBlock Text="dd/MM/yyyy HH:mm" Margin="2,4,0,0" FontSize="10"
+                                           Foreground="{StaticResource TextTertiaryBrush}"/>
+                            </StackPanel>
                         </Grid>
-                        <TextBlock Text="dd/MM/yyyy HH:mm" Margin="2,4,0,0" FontSize="10"
-                                   Foreground="{StaticResource TextTertiaryBrush}"/>
+
+                        <!-- Ô riêng của In công nợ: mã khách hàng + loại chứng từ -->
+                        <Grid Margin="0,14,0,0"
+                              Visibility="{Binding ShowCustomerFields, Converter={StaticResource BoolToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="180"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Mã khách hàng công nợ" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="CustomerCodeTextBox"
+                                         Style="{StaticResource ModernTextBox}"
+                                         IsEnabled="{Binding CanEditCustomerCode}"
+                                         Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Nhập mã khách hàng để tra cứu / in hoá đơn công nợ"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Loại chứng từ" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox Style="{StaticResource ModernComboBox}"
+                                          ItemsSource="{Binding DocumentTypeOptions}"
+                                          IsEnabled="{Binding CanEditCustomerCode}"
+                                          SelectedItem="{Binding DocumentType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Nút chạy: màu đổi theo chức năng đang chọn -->
+                        <Button Content="Bắt đầu" Height="38" Margin="0,16,0,0"
+                                Command="{Binding RunSelectedFunctionCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedFunction.AccentKey}" Value="Warning">
+                                            <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectedFunction.AccentKey}" Value="Print">
+                                            <Setter Property="Background" Value="{StaticResource PrintButtonBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- Điều khiển in: chỉ hiện khi In công nợ đang chạy -->
+                        <UniformGrid Rows="1" Columns="3" Margin="0,10,0,0"
+                                     Visibility="{Binding ShowPrintControls, Converter={StaticResource BoolToVis}}">
+                            <Button Content="Tạm dừng" Style="{StaticResource PauseButton}" Command="{Binding PauseCommand}"/>
+                            <Button Content="Tiếp tục" Style="{StaticResource ResumeButton}" Command="{Binding ResumeCommand}"/>
+                            <Button Content="Kết thúc" Margin="0" Style="{StaticResource StopButton}" Command="{Binding StopCommand}"/>
+                        </UniformGrid>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
 
-            <!-- Mã khách hàng (chỉ dùng cho In công nợ → khoá theo quyền PrintDebtInvoice) -->
-            <Border Grid.Row="6" Style="{StaticResource Card}"
-                    IsEnabled="{Binding CanPrintDebtInvoice}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="180"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Mã khách hàng công nợ" Style="{StaticResource FieldLabel}"/>
-                        <TextBox x:Name="CustomerCodeTextBox"
-                                 Style="{StaticResource ModernTextBox}"
-                                 Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Nhập mã khách hàng để tra cứu / in hoá đơn công nợ"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Loại chứng từ" Style="{StaticResource FieldLabel}"/>
-                        <ComboBox Style="{StaticResource ModernComboBox}"
-                                  ItemsSource="{Binding DocumentTypeOptions}"
-                                  IsEnabled="{Binding CanPrintDebtInvoice}"
-                                  SelectedItem="{Binding DocumentType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Buttons chính -->
-            <UniformGrid Grid.Row="8" Rows="1" Columns="4">
-                <Button Content="Lấy Sổ cái" Style="{StaticResource SecondaryButton}" Command="{Binding GetLedgerCommand}"/>
-                <Button Content="Lấy QR" Style="{StaticResource SecondaryButton}" Command="{Binding GetQrCommand}"/>
-                <Button Content="Đối chiếu" Style="{StaticResource PrimaryButton}" Command="{Binding RunReconcileCommand}"/>
-                <Button Content="Clear ca" Margin="0" Style="{StaticResource WarningButton}" Command="{Binding ClearShiftCommand}"/>
-            </UniformGrid>
-
-            <!-- Buttons điều khiển in hoá đơn công nợ -->
-            <UniformGrid Grid.Row="10" Rows="1" Columns="4">
-                <Button Content="In công nợ" Style="{StaticResource PrintButton}"
-                        Command="{Binding PrintDebtInvoiceCommand}"
-                        CommandParameter="{Binding Text, ElementName=CustomerCodeTextBox}"/>
-                <Button Content="Tạm dừng" Style="{StaticResource PauseButton}" Command="{Binding PauseCommand}"/>
-                <Button Content="Tiếp tục" Style="{StaticResource ResumeButton}" Command="{Binding ResumeCommand}"/>
-                <Button Content="Kết thúc" Margin="0" Style="{StaticResource StopButton}" Command="{Binding StopCommand}"/>
-            </UniformGrid>
-
-            <!-- Nút in Bảng phân chia sản phẩm theo ca (dùng khoảng Từ ngày/Đến ngày ở trên) -->
-            <Button Grid.Row="12" Content="In Bảng phân chia sản phẩm theo ca"
-                    Style="{StaticResource PrintButton}" Margin="0"
-                    Command="{Binding PrintShiftProductReportCommand}"/>
-
-            <!-- Nút Clear công nợ tháng (tự tính 23:58 ngày cuối tháng trước) -->
-            <Button Grid.Row="14" Content="Clear công nợ tháng (cuối tháng trước)"
-                    Style="{StaticResource WarningButton}" Margin="0"
-                    Command="{Binding ClearDebtCommand}"/>
-
-            <!-- Progress -->
-            <StackPanel Grid.Row="16" Orientation="Horizontal" VerticalAlignment="Center">
-                <ProgressBar Width="150" Height="5" IsIndeterminate="True"
-                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
-                             Foreground="{StaticResource AccentBrush}" Background="#E5E7EB"/>
-                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
-                           Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="11.5"
-                           Text="{Binding StatusText}" TextWrapping="Wrap"/>
-            </StackPanel>
-
-            <!-- Kết quả đối chiếu - chỉ hiển thị (và chỉ chiếm chỗ) khi có dữ liệu -->
-            <Border Grid.Row="18" Style="{StaticResource Card}" Margin="0"
-                    Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}">
-                <StackPanel>
-                    <TextBlock Text="Kết quả đối chiếu" Style="{StaticResource SectionTitle}"/>
-
-                    <Grid Margin="0,0,0,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Sổ cái" Style="{StaticResource ResultLabel}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding LedgerText}" Style="{StaticResource ResultValue}"/>
-                    </Grid>
-
-                    <Grid Margin="0,4,0,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="QR HDBank" Style="{StaticResource ResultLabel}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding QrText}" Style="{StaticResource ResultValue}"/>
-                    </Grid>
-
-                    <Separator Margin="0,6,0,8" Background="{StaticResource BorderBrushLight}"/>
-
-                    <TextBlock Text="{Binding DifferenceText}" FontSize="16" FontWeight="Bold"
-                               Foreground="{Binding DifferenceColor}"/>
-
-                    <TextBlock Text="{Binding LogText}" Margin="0,8,0,0" FontSize="11.5"
-                               Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                <!-- Tiến trình -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,0">
+                    <ProgressBar Width="150" Height="5" IsIndeterminate="True"
+                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
+                                 Foreground="{StaticResource AccentBrush}" Background="#E5E7EB"/>
+                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                               Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="11.5"
+                               Text="{Binding StatusText}" TextWrapping="Wrap"/>
                 </StackPanel>
-            </Border>
-        </Grid>
-    </ScrollViewer>
+
+                <!-- Kết quả đối chiếu - chỉ hiển thị khi có dữ liệu -->
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Kết quả đối chiếu" Style="{StaticResource SectionTitle}"/>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Sổ cái" Style="{StaticResource ResultLabel}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding LedgerText}" Style="{StaticResource ResultValue}"/>
+                        </Grid>
+
+                        <Grid Margin="0,4,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="QR HDBank" Style="{StaticResource ResultLabel}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding QrText}" Style="{StaticResource ResultValue}"/>
+                        </Grid>
+
+                        <Separator Margin="0,6,0,8" Background="{StaticResource BorderBrushLight}"/>
+
+                        <TextBlock Text="{Binding DifferenceText}" FontSize="16" FontWeight="Bold"
+                                   Foreground="{Binding DifferenceColor}"/>
+
+                        <TextBlock Text="{Binding LogText}" Margin="0,8,0,0" FontSize="11.5"
+                                   Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </Window>

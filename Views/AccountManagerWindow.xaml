@@ -157,26 +157,67 @@
             <Setter Property="Margin" Value="0,4"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
+        <!-- Hàng chức năng chạy ẩn: nhãn + trạng thái + công tắc -->
+        <Style x:Key="HeadlessRow" TargetType="Grid">
+            <Setter Property="Margin" Value="0,3"/>
+        </Style>
+
+        <Style x:Key="HeadlessLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Công tắc bật/tắt chạy ẩn -->
+        <Style x:Key="HeadlessToggle" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Width="44" Height="24">
+                            <Border x:Name="Track" CornerRadius="12"
+                                    Background="{StaticResource InputBorderBrush}"/>
+                            <Ellipse x:Name="Thumb" Width="18" Height="18"
+                                     Fill="{StaticResource SurfaceBrush}"
+                                     HorizontalAlignment="Left" Margin="3,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="14"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="260"/>
             <ColumnDefinition Width="18"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Cột trái: danh sách tài khoản -->
-        <Border Grid.Column="0" Style="{StaticResource Card}">
+        <!-- Trái trên: danh sách tài khoản -->
+        <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource Card}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="10"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="10"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -213,30 +254,55 @@
                     <Button Content="Thêm" Style="{StaticResource PrimaryButton}" Command="{Binding AddCommand}"/>
                     <Button Content="Xoá" Style="{StaticResource DangerButton}" Margin="0" Command="{Binding DeleteCommand}"/>
                 </UniformGrid>
+            </Grid>
+        </Border>
 
-                <!-- Chạy ẩn (headless) -->
-                <TextBlock Grid.Row="6" Text="Chạy ẩn (không mở Chrome)" Style="{StaticResource SectionTitle}"/>
+        <!-- Trái dưới: Chạy ẩn (headless) — tách khối riêng -->
+        <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource Card}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="8">
+                <Grid Grid.Row="0" Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Chạy ẩn (không mở Chrome)" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Lưu" Style="{StaticResource SecondaryButton}"
+                            Height="26" Margin="0" FontSize="11"
+                            Command="{Binding SaveHeadlessCommand}"/>
+                </Grid>
+
+                <StackPanel Grid.Row="2">
+                    <TextBlock Text="Bật chức năng nào thì chức năng đó chạy ngầm (không mở cửa sổ Chrome)."
+                               FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,6"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
                     <ItemsControl ItemsSource="{Binding HeadlessOptions}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <CheckBox Style="{StaticResource FunctionCheckbox}"
-                                          Content="{Binding DisplayName}"
-                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"/>
+                                <Grid Style="{StaticResource HeadlessRow}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
+                                               Style="{StaticResource HeadlessLabel}" TextWrapping="Wrap"/>
+                                    <CheckBox Grid.Column="1" Style="{StaticResource HeadlessToggle}"
+                                              IsChecked="{Binding IsChecked, Mode=TwoWay}"/>
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-
-                    <Button Content="Lưu cấu hình chạy ẩn" Style="{StaticResource SecondaryButton}"
-                            Margin="0,8,0,0" HorizontalAlignment="Left"
-                            Command="{Binding SaveHeadlessCommand}"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- Cột phải: form chi tiết -->
-        <Border Grid.Column="2" Style="{StaticResource Card}">
+        <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" Style="{StaticResource Card}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>

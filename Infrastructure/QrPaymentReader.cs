@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Playwright;
@@ -67,7 +68,8 @@ public sealed class QrPaymentReader
     public static async Task<decimal> GetStaticQrTotalAsync(
         IBrowserContext context,
         IPage egasHome,
-        ReconciliationRequest request)
+        ReconciliationRequest request,
+        CancellationToken token = default)
     {
         if (context == null)
             throw new ArgumentNullException(nameof(context));
@@ -172,7 +174,8 @@ public sealed class QrPaymentReader
                 managementPage,
                 QuanLyYeuCauRegex,
                 DefaultTimeoutMs,
-                "QuanLyYeuCau");
+                "QuanLyYeuCau",
+                token);
 
             await WaitDomReadyAsync(managementPage);
 
@@ -309,7 +312,8 @@ public sealed class QrPaymentReader
                     pagesBeforeQrClick,
                     QrIndexRegex,
                     "Quản lý QR Code",
-                    NewPageTimeoutMs);
+                    NewPageTimeoutMs,
+                    token);
 
             await AttachPageDiagnosticsAsync(
                 qrIndexPage,
@@ -460,7 +464,8 @@ public sealed class QrPaymentReader
                     pagesBeforeResultClick,
                     ViewResultRegex,
                     "Xem kết quả thanh toán",
-                    NewPageTimeoutMs);
+                    NewPageTimeoutMs,
+                    token);
 
             await AttachPageDiagnosticsAsync(
                 resultPage,
@@ -633,7 +638,9 @@ public sealed class QrPaymentReader
             // 26. CHỜ AJAX
             // ====================================================
 
-            await Task.Delay(1_500);
+            // Có token để "Dừng toàn bộ" cắt được cả khoảng chờ này
+            // (không chỉ cứu được khi lệnh Playwright tiếp theo kịp ném lỗi).
+            await Task.Delay(1_500, token);
 
             await WaitDomReadyAsync(
                 resultPage);
@@ -749,7 +756,8 @@ public sealed class QrPaymentReader
         IReadOnlyCollection<IPage> existingPages,
         Regex expectedUrlRegex,
         string actionName,
-        int timeoutMs)
+        int timeoutMs,
+        CancellationToken token = default)
     {
         var stopwatch =
             System.Diagnostics.Stopwatch.StartNew();
@@ -759,6 +767,8 @@ public sealed class QrPaymentReader
 
         while (stopwatch.ElapsedMilliseconds < timeoutMs)
         {
+            token.ThrowIfCancellationRequested();
+
             var currentPages =
                 context.Pages;
 
@@ -814,7 +824,7 @@ public sealed class QrPaymentReader
                 }
             }
 
-            await Task.Delay(200);
+            await Task.Delay(200, token);
         }
 
         Log(
@@ -836,13 +846,16 @@ public sealed class QrPaymentReader
         IPage page,
         Regex expectedUrlRegex,
         int timeoutMs,
-        string description)
+        string description,
+        CancellationToken token = default)
     {
         var stopwatch =
             System.Diagnostics.Stopwatch.StartNew();
 
         while (stopwatch.ElapsedMilliseconds < timeoutMs)
         {
+            token.ThrowIfCancellationRequested();
+
             var url =
                 page.Url;
 
@@ -854,7 +867,7 @@ public sealed class QrPaymentReader
                 return;
             }
 
-            await Task.Delay(200);
+            await Task.Delay(200, token);
         }
 
         throw new TimeoutException(

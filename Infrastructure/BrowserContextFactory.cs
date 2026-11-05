@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using QrLedgerReconciler.Services;
 using System;
 using System.IO;
 
@@ -19,6 +20,12 @@ namespace QrLedgerReconciler.Infrastructure;
 internal static class BrowserContextFactory
 {
     public const float DefaultTimeoutMs = 60_000;
+
+    /// <summary>
+    /// Giới hạn thời gian chờ đóng trình duyệt ở khối finally. Chrome bình thường
+    /// đóng trong ~1 giây; quá hạn này nghĩa là nó đã treo, không nên chặn UI.
+    /// </summary>
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(15);
 
     // SlowMo làm mỗi hành động của Playwright (click/fill/goto/select...) chậm
     // thêm khoảng này. Đặt 0 để chạy nhanh nhất có thể — các luồng đã tự chờ
@@ -43,9 +50,15 @@ internal static class BrowserContextFactory
     /// <summary>
     /// Runs an operation using the application's persistent browser profile.
     /// </summary>
+    /// <param name="control">
+    /// Nếu truyền vào, "Dừng toàn bộ" sẽ đóng trình duyệt ngay lập tức: lệnh
+    /// Playwright đang chờ ném PlaywrightException và được dịch thành
+    /// OperationCanceledException để tầng gọi coi là huỷ chủ động, không phải lỗi.
+    /// </param>
     public static async Task<T> RunAsync<T>(
         Func<IBrowserContext, Task<T>> action,
-        bool headless = false)
+        bool headless = false,
+        RunControl? control = null)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -57,13 +70,37 @@ internal static class BrowserContextFactory
 
         context.SetDefaultTimeout(DefaultTimeoutMs);
 
+        // Force stop: đóng context trên thread pool để không chặn UI thread
+        // trong lúc Cancel() phát callback (callback chạy đồng bộ trên thread gọi).
+        using var registration = control?.Token.Register(() =>
+        {
+            if (!control.ForceStopRequested) return;
+
+            _ = Task.Run(async () =>
+            {
+                try { await context.CloseAsync(); }
+                catch { /* context đã đóng / đang đóng */ }
+            });
+        });
+
         try
         {
+            // Đã bấm Dừng toàn bộ trong lúc khởi động trình duyệt.
+            control?.ThrowIfStopped();
+
             return await action(context);
+        }
+        catch (PlaywrightException) when (control?.ForceStopRequested == true)
+        {
+            throw new OperationCanceledException(control.Token);
         }
         finally
         {
-            await context.CloseAsync();
+            // Không chờ vô hạn: nếu Chrome treo, CloseAsync không bao giờ trả về
+            // và RunExclusiveAsync không bao giờ thoát finally → toàn bộ UI bị
+            // khoá vĩnh viễn. Hết hạn thì bỏ qua, tác vụ Playwright sẽ tự dọn.
+            try { await context.CloseAsync().WaitAsync(CloseTimeout); }
+            catch { /* force stop đã đóng trước đó / quá hạn / context đã dispose */ }
         }
     }
 
@@ -72,7 +109,8 @@ internal static class BrowserContextFactory
     /// </summary>
     public static Task RunAsync(
         Func<IBrowserContext, Task> action,
-        bool headless = false)
+        bool headless = false,
+        RunControl? control = null)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -80,7 +118,7 @@ internal static class BrowserContextFactory
         {
             await action(context);
             return true;
-        }, headless);
+        }, headless, control);
     }
 
     /// <summary>
@@ -172,7 +210,7 @@ internal static class BrowserContextFactory
         Exception chromiumException)
     {
         return
-            "Không thể khởi động trình duyệt cho HDBank QR Reconciler.\n\n" +
+            "Không thể khởi động trình duyệt cho EGAS.\n\n" +
 
             "Ưu tiên 1 - Google Chrome:\n" +
             $"{chromeException.Message}\n\n" +

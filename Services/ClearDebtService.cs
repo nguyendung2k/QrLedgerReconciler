@@ -28,6 +28,7 @@ public class ClearDebtService
     public async Task<ClearDebtResult> RunAsync(
         ReconciliationRequest request,
         Action<string> status,
+        RunControl control,
         bool headless = false)
     {
         return await BrowserContextFactory.RunAsync(async context =>
@@ -48,6 +49,8 @@ public class ClearDebtService
 
             while (true)
             {
+                await control.CheckpointAsync(status);
+
                 var customers = await ParseCustomerListAsync(page, status);
 
                 if (customers.Count == 0)
@@ -62,10 +65,16 @@ public class ClearDebtService
 
                 try
                 {
-                    await ProcessOneCustomerAsync(context, page, current, status);
+                    await ProcessOneCustomerAsync(context, page, current, status, control);
                     processedCount++;
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
+                {
+                    // Người dùng bấm Dừng toàn bộ — ném tiếp ra ngoài để dừng hẳn,
+                    // không ghi thành "Lỗi khách X".
+                    throw;
+                }
+                catch (Exception ex) when (!control.IsStopped)
                 {
                     var errMsg = $"Lỗi khách {current.CustomerCode}: {ex.Message}";
                     errors.Add(errMsg);
@@ -77,7 +86,7 @@ public class ClearDebtService
 
             status($"Hoàn thành: {processedCount} khách đã clear, {errors.Count} lỗi.");
             return new ClearDebtResult(processedCount + errors.Count, processedCount, errors);
-        }, headless);
+        }, headless, control);
     }
 
     /// <summary>
@@ -260,17 +269,45 @@ public class ClearDebtService
         IBrowserContext context,
         IPage page,
         CustomerInfo customer,
-        Action<string> status)
+        Action<string> status,
+        RunControl control)
     {
+        await control.CheckpointAsync(status);
+
         status($"Đang xử lý khách {customer.CustomerCode} ({customer.CustomerName})...");
 
         // Setup dialog handler TRƯỚC khi click link — alert có thể không xuất hiện
         // với một số khách, handler chỉ fire khi có dialog.
-        page.Dialog += async (sender, dialog) =>
+        //
+        // Handler phải là một biến cục bộ có tên để còn gỡ được ở cuối hàm:
+        // page.Dialog -= (_, _) => { } tạo delegate MỚI (khác target) nên không
+        // gỡ gì cả, khiến mỗi khách lại cộng thêm một handler.
+        //
+        // Thân handler là async void: nếu "Dừng toàn bộ" đóng trình duyệt đúng
+        // lúc dialog đang xử lý, AcceptAsync ném PlaywrightException và sẽ làm
+        // sập ứng dụng (không có DispatcherUnhandledException ở App.xaml.cs).
+        EventHandler<IDialog>? dialogHandler = async (_, dialog) =>
         {
-            status($"Dialog: {dialog.Message}");
-            await dialog.AcceptAsync();
+            try
+            {
+                status($"Dialog: {dialog.Message}");
+                await dialog.AcceptAsync();
+            }
+            catch (Exception ex) when (!control.IsStopped)
+            {
+                // Lỗi thật khi xử lý dialog — báo cho người dùng biết, nhưng KHÔNG
+                // để lọt ra ngoài: đây là async void.
+                status($"⚠️ Không xử lý được dialog: {ex.Message}");
+            }
+            catch (Exception)
+            {
+                // Context đã bị đóng (Dừng toàn bộ) — bỏ qua, luồng chính đã dừng.
+                // Vẫn phải bắt: lỗi thoát khỏi async void sẽ làm sập ứng dụng
+                // (App không có DispatcherUnhandledException).
+            }
         };
+
+        page.Dialog += dialogHandler;
 
         // Click link ">>>>" → mở tab mới (TR.aspx).
         var popupTask = context.RunAndWaitForPageAsync(async () =>
@@ -279,26 +316,34 @@ public class ClearDebtService
             await link.ClickAsync(new() { Timeout = ClickTimeoutMs });
         }, new() { Timeout = PopupTimeoutMs });
 
-        var detailPage = await popupTask;
-        await detailPage.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-        await detailPage.WaitForTimeoutAsync(500); // Chờ dialog alert xuất hiện
+        IPage detailPage;
+        try
+        {
+            detailPage = await popupTask;
+            await detailPage.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+            await detailPage.WaitForTimeoutAsync(500); // Chờ dialog alert xuất hiện
 
-        // Nhấn Lưu (Ctrl-S).
-        await detailPage.ClickAsync("#savebtn");
-        await detailPage.WaitForTimeoutAsync(AfterSaveWaitMs);
+            // Nhấn Lưu (Ctrl-S).
+            await detailPage.ClickAsync("#savebtn");
+            await detailPage.WaitForTimeoutAsync(AfterSaveWaitMs);
 
-        // Đợi modal "Đã cập nhập chứng từ" — tín hiệu lưu thành công.
-        var modal = detailPage.Locator("text=Đã cập nhập");
-        await modal.WaitForAsync(new() { Timeout = ModalWaitMs });
-        status($"✅ Khách {customer.CustomerCode} đã lưu chứng từ.");
+            // Đợi modal "Đã cập nhập chứng từ" — tín hiệu lưu thành công.
+            var modal = detailPage.Locator("text=Đã cập nhập");
+            await modal.WaitForAsync(new() { Timeout = ModalWaitMs });
+            status($"✅ Khách {customer.CustomerCode} đã lưu chứng từ.");
 
-        await detailPage.WaitForTimeoutAsync(1000);
+            await detailPage.WaitForTimeoutAsync(1000);
 
-        // Đóng tab detail ngay khi modal hiện (không cần click nút Close trên modal).
-        await detailPage.CloseAsync();
-        await page.BringToFrontAsync();
-
-        page.Dialog -= (_, _) => { };
+            // Đóng tab detail ngay khi modal hiện (không cần click nút Close trên modal).
+            await detailPage.CloseAsync();
+            await page.BringToFrontAsync();
+        }
+        finally
+        {
+            // Gỡ đúng handler đã đăng ký — nếu để lại, mỗi khách sẽ cộng dồn
+            // một handler trên cùng page và cùng tranh AcceptAsync một dialog.
+            page.Dialog -= dialogHandler;
+        }
     }
 
     // ====================== RELOAD DANH SÁCH ======================

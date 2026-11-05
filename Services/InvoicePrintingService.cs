@@ -40,14 +40,10 @@ public class InvoicePrintingService
         ReconciliationRequest request,
         string customerCode,
         Action<string> status,
-        PrintControl? control = null,
+        RunControl control,
         string? documentType = null,
         bool headless = false)
     {
-        // Cho phép gọi không truyền control (ví dụ test) — khi đó không có
-        // ai gọi Pause/Resume/Stop nên vòng lặp chạy như bình thường.
-        control ??= new PrintControl();
-
         await BrowserContextFactory.RunAsync(async context =>
         {
             status("Đang khởi động trình duyệt...");
@@ -60,8 +56,10 @@ public class InvoicePrintingService
             {
                 await EgasAuthenticator.LoginAsync(page, EgasEndpoints.BaseUrl, request);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!control.IsStopped)
             {
+                // Không bọc lỗi khi đang dừng: "Đăng nhập thất bại." sẽ che mất
+                // việc người dùng vừa bấm Dừng toàn bộ.
                 throw new Exception("Đăng nhập thất bại.", ex);
             }
 
@@ -73,8 +71,7 @@ public class InvoicePrintingService
 
             for (int d = 0; d < days.Count; d++)
             {
-                control.ThrowIfStopped();
-                await control.WaitIfPausedAsync(status);
+                await control.CheckpointAsync(status);
 
                 var day = days[d];
                 var from = DayStart(request.From, day);
@@ -96,7 +93,7 @@ public class InvoicePrintingService
             }
 
             status(control.IsStopped ? "⏹ Đã dừng theo yêu cầu." : "✅ Hoàn thành.");
-        }, headless);
+        }, headless, control);
     }
 
     private static string DescribeDocumentType(string? documentType)
@@ -176,7 +173,7 @@ public class InvoicePrintingService
     private static async Task PrintAllInvoicesAsync(
         IPage page,
         Action<string> status,
-        PrintControl control,
+        RunControl control,
         string? documentType)
     {
         status("=== BẮT ĐẦU IN HOÁ ĐƠN ===");
@@ -194,10 +191,9 @@ public class InvoicePrintingService
         for (int i = 0; i < count; i++)
         {
             // Điểm kiểm tra Dừng / Tạm dừng — trước mỗi hoá đơn, kể cả khi
-            // đang pause thì vẫn có thể Stop được ngay (WaitIfPausedAsync
+            // đang pause thì vẫn có thể Stop được ngay (CheckpointAsync
             // liên tục kiểm tra IsStopped bên trong lúc chờ).
-            control.ThrowIfStopped();
-            await control.WaitIfPausedAsync(status);
+            await control.CheckpointAsync(status);
 
             status($"In hóa đơn {i + 1}/{count}...");
 
@@ -310,7 +306,7 @@ body { margin: 0 auto !important; }
                             });
 
                             status("Đang in (PDF hoá đơn)...");
-                            await HeadlessPrintHelper.PrintPdfAsync(pdfBytes, status);
+                            await HeadlessPrintHelper.PrintPdfAsync(pdfBytes, status, control.Token);
                         }
                         finally
                         {
@@ -333,6 +329,11 @@ body { margin: 0 auto !important; }
             {
                 // Do người dùng bấm Kết thúc trong lúc đang xử lý hoá đơn này —
                 // ném tiếp ra ngoài để dừng hẳn, không log như một lỗi thường.
+                throw;
+            }
+            catch (Exception) when (control.IsStopped)
+            {
+                // ForceStop đã đóng trình duyệt giữa chừng — không báo lỗi.
                 throw;
             }
             catch (Exception ex)

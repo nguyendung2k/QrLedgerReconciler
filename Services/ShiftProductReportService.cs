@@ -18,6 +18,7 @@ public class ShiftProductReportService
     public Task RunAsync(
         ReconciliationRequest request,
         Action<string> status,
+        RunControl control,
         bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
@@ -34,22 +35,25 @@ public class ShiftProductReportService
 
             while (date <= lastDate)
             {
+                await control.CheckpointAsync(status);
+
                 status($"Đang xử lý ngày {date:dd/MM/yyyy}");
 
-                await ProcessOneDayAsync(context, homePage, date, status);
+                await ProcessOneDayAsync(context, homePage, date, status, control);
 
                 date = date.AddDays(1);
             }
 
             status("Hoàn thành in Bảng phân chia sản phẩm.");
-        }, headless);
+        }, headless, control);
     }
 
     private static async Task ProcessOneDayAsync(
         IBrowserContext context,
         IPage homePage,
         DateTime date,
-        Action<string> status)
+        Action<string> status,
+        RunControl control)
     {
         var shifts = await GetShiftListForDateAsync(context, homePage, date, status);
 
@@ -66,13 +70,20 @@ public class ShiftProductReportService
 
         foreach (var shift in shifts)
         {
+            await control.CheckpointAsync(status);
+
             status($"In Bảng phân chia sản phẩm - ca {shift}");
 
             try
             {
                 await PrintShiftProductReportAsync(context, shift, status);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
+            {
+                // Người dùng bấm Dừng toàn bộ — dừng hẳn, không log như lỗi ca.
+                throw;
+            }
+            catch (Exception ex) when (!control.IsStopped)
             {
                 status($"Lỗi khi in ca {shift}: {ex.Message}");
             }
