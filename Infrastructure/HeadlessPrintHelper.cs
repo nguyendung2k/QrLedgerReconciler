@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Printing;
 using System.IO;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 
 namespace QrLedgerReconciler.Infrastructure;
 
@@ -28,7 +29,10 @@ internal static class HeadlessPrintHelper
     /// <summary>
     /// In PDF <paramref name="pdfBytes"/> ra máy in mặc định.
     /// </summary>
-    public static async Task PrintPdfAsync(byte[] pdfBytes, Action<string> status)
+    public static async Task PrintPdfAsync(
+        byte[] pdfBytes,
+        Action<string> status,
+        CancellationToken token = default)
     {
         if (pdfBytes == null || pdfBytes.Length == 0)
         {
@@ -39,7 +43,7 @@ internal static class HeadlessPrintHelper
 
         try
         {
-            await File.WriteAllBytesAsync(tempPdf, pdfBytes);
+            await File.WriteAllBytesAsync(tempPdf, pdfBytes, token);
 
             status("Đang raster hoá PDF (nội dung hoá đơn)...");
 
@@ -50,6 +54,8 @@ internal static class HeadlessPrintHelper
 
             for (uint i = 0; i < pageCount; i++)
             {
+                token.ThrowIfCancellationRequested();
+
                 status(pageCount > 1
                     ? $"Đang in trang {i + 1}/{pageCount}..."
                     : "Đang gửi tới máy in...");
@@ -57,7 +63,11 @@ internal static class HeadlessPrintHelper
                 using var page = doc.GetPage(i);
                 using var image = await RasterizePdfPageAsync(page);
 
-                PrintImage(image);
+                // PrintDocument.Print() là lệnh GDI đồng bộ, có thể treo UI
+                // thread vài giây mỗi trang. Chạy trên thread STA riêng rồi
+                // await để các nút Tạm dừng / Kết thúc / Dừng toàn bộ vẫn
+                // phản hồi trong lúc spool.
+                await PrintImageOnStaThreadAsync(image, token);
             }
 
             status("✅ Đã gửi lệnh in.");
@@ -82,6 +92,46 @@ internal static class HeadlessPrintHelper
                 // bỏ qua
             }
         }
+    }
+
+    /// <summary>
+    /// Chạy <see cref="PrintImage"/> trên một thread STA riêng. Dùng thread
+    /// thật thay vì Task.Run vì một số driver máy in yêu cầu STA.
+    /// Continuation (nhờ await không ConfigureAwait(false)) quay về UI thread.
+    /// </summary>
+    private static Task PrintImageOnStaThreadAsync(Image image, CancellationToken token)
+    {
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                // Kiểm tra lại ngay trước khi spool: nếu người dùng đã dừng
+                // trong lúc raster hoá thì không gửi thêm trang nào.
+                token.ThrowIfCancellationRequested();
+
+                PrintImage(image);
+                tcs.SetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                tcs.SetCanceled(token);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "HeadlessPrintThread"
+        };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+
+        return tcs.Task;
     }
 
     /// <summary>

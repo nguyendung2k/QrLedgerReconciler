@@ -62,13 +62,13 @@
     <!-- APPLICATION INFORMATION                                   -->
     <!-- ========================================================= -->
 
-    <AssemblyName>HDBank_QR_Reconciler</AssemblyName>
+    <AssemblyName>EGAS</AssemblyName>
 
     <RootNamespace>QrLedgerReconciler</RootNamespace>
 
-    <Product>HDBank QR Reconciler</Product>
+    <Product>EGAS</Product>
 
-    <Title>HDBank QR Reconciler</Title>
+    <Title>EGAS</Title>
 
     <Description>
       Đối chiếu Sổ cái và QR tĩnh HDBank

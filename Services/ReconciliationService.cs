@@ -15,6 +15,7 @@ public sealed class ReconciliationService
     public Task<ReconciliationResult> RunAsync(
         ReconciliationRequest request,
         Action<string> status,
+        RunControl control,
         bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
@@ -33,33 +34,39 @@ public sealed class ReconciliationService
             {
                 throw;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!control.IsStopped)
             {
+                // Đang dừng thì để lỗi gốc nổi lên: bọc thành "Không thể đăng nhập
+                // EGAS." sẽ biến thao tác Dừng toàn bộ thành thông báo lỗi.
                 throw new Exception("Không thể đăng nhập EGAS.", ex);
             }
 
-            status("Đang lấy tổng sổ cái...");
-            var ledgerTotal = await LedgerReportReader.GetTotalAsync(context, request);
+            control.ThrowIfStopped();
 
-            var qrTotal = await GetQrTotalAsync(context, egas, request, status);
+            status("Đang lấy tổng sổ cái...");
+            var ledgerTotal = await LedgerReportReader.GetTotalAsync(context, request, control);
+
+            var qrTotal = await GetQrTotalAsync(context, egas, request, status, control.Token);
 
             return new ReconciliationResult(ledgerTotal, qrTotal);
-        }, headless);
+        }, headless, control);
     }
 
     private static Task<decimal> GetQrTotalAsync(
         IBrowserContext context,
         IPage page,
         ReconciliationRequest request,
-        Action<string> status)
+        Action<string> status,
+        CancellationToken token)
     {
         status("Đang tra soát QR tĩnh HDBank...");
-        return QrPaymentReader.GetStaticQrTotalAsync(context, page, request);
+        return QrPaymentReader.GetStaticQrTotalAsync(context, page, request, token);
     }
 
     public Task<decimal> GetLedgerOnlyAsync(
         ReconciliationRequest request,
         Action<string> status,
+        RunControl control,
         bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
@@ -69,14 +76,17 @@ public sealed class ReconciliationService
             status("Đang đăng nhập EGAS...");
             await EgasAuthenticator.LoginAsync(page, EgasEndpoints.BaseUrl, request);
 
+            control.ThrowIfStopped();
+
             status("Đang lấy dữ liệu sổ cái...");
-            return await LedgerReportReader.GetTotalAsync(context, request);
-        }, headless);
+            return await LedgerReportReader.GetTotalAsync(context, request, control);
+        }, headless, control);
     }
 
     public Task<decimal> GetQrOnlyAsync(
         ReconciliationRequest request,
         Action<string> status,
+        RunControl control,
         bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
@@ -86,13 +96,14 @@ public sealed class ReconciliationService
             status("Đang đăng nhập EGAS...");
             await EgasAuthenticator.LoginAsync(page, EgasEndpoints.BaseUrl, request);
 
-            return await GetQrTotalAsync(context, page, request, status);
-        }, headless);
+            return await GetQrTotalAsync(context, page, request, status, control.Token);
+        }, headless, control);
     }
 
     public Task ClearShiftAsync(
         ReconciliationRequest request,
         Action<string> status,
+        RunControl control,
         bool headless = false)
     {
         return BrowserContextFactory.RunAsync(async context =>
@@ -107,14 +118,16 @@ public sealed class ReconciliationService
 
             while (currentDay <= lastDay)
             {
+                await control.CheckpointAsync();
+
                 status($"Xử lý ngày {currentDay:dd/MM/yyyy}");
 
-                await ShiftInvoiceProcessor.ClearOneDayAsync(context, page, currentDay, status);
+                await ShiftInvoiceProcessor.ClearOneDayAsync(context, page, currentDay, status, control);
 
                 currentDay = currentDay.AddDays(1);
             }
 
             status("Hoàn thành.");
-        }, headless);
+        }, headless, control);
     }
 }

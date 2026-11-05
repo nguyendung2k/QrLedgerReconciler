@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.Playwright;
 using QrLedgerReconciler.Common;
 using QrLedgerReconciler.Models;
+using QrLedgerReconciler.Services;
 
 namespace QrLedgerReconciler.Infrastructure;
 
@@ -11,8 +12,11 @@ internal static class LedgerReportReader
 
     public static async Task<decimal> GetTotalAsync(
         IBrowserContext context,
-        ReconciliationRequest request)
+        ReconciliationRequest request,
+        RunControl? control = null)
     {
+        control?.ThrowIfStopped();
+
         var page = await context.NewPageAsync();
 
         var url =
