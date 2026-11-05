@@ -36,20 +36,47 @@ internal static class ShiftInvoiceProcessor
 
         status($"Xử lý {targetShifts.Count}/{shifts.Count} ca (#36C)");
 
-        foreach (var shiftInfo in targetShifts)
+        // Bộ nhớ tạm: hàng đợi các ca cần xử lý. Làm xong 1 ca thì xoá khỏi
+        // hàng đợi, tránh xử lý sót/trùng.
+        //
+        // Mở ca kế tiếp: mở lại danh sách ca theo đúng ngày (OpenHomeAsync) rồi
+        // click link ca. KHÔNG goto thẳng href "?&WShift=..." vì URL đó thiếu
+        // viewdate/context → EGAS hiểu là phiên khác và đá ra trang login.
+        var pending = new Queue<ShiftInfo>(targetShifts);
+
+        var isFirst = true;
+
+        while (pending.Count > 0)
         {
-            await ProcessShiftAsync(context, page, shiftInfo.Shift, status);
+            var shiftInfo = pending.Dequeue();
+
+            // Ca đầu dùng danh sách đang mở; ca sau mở lại danh sách theo ngày.
+            if (!isFirst)
+            {
+                await OpenHomeAsync(page, day, status);
+            }
+
+            isFirst = false;
+
+            await ProcessShiftAsync(context, page, shiftInfo, status);
+
+            status($"Xong ca {shiftInfo.Shift} — còn {pending.Count} ca.");
         }
     }
 
     private static async Task ProcessShiftAsync(
         IBrowserContext context,
         IPage page,
-        string shift,
+        ShiftInfo shiftInfo,
         Action<string> status)
     {
-        status($"Mở ca: {shift}");
-        await OpenShiftAsync(page, shift);
+        status($"Mở ca: {shiftInfo.Shift}");
+
+        // Click link ca trong danh sách đã lọc theo ngày (không dùng href trực
+        // tiếp để giữ nguyên context phiên của EGAS).
+        var ca = page.Locator($"a:has-text('{shiftInfo.Shift}')").First;
+        await ca.ClickAsync(new() { Timeout = 10000 });
+        await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
 
         await OpenShiftMenuAsync(page);
 
@@ -67,7 +94,7 @@ internal static class ShiftInvoiceProcessor
 
         await popup.CloseAsync();
         await page.BringToFrontAsync();
-        status($"Hoàn thành ca {shift}");
+        status($"Hoàn thành ca {shiftInfo.Shift}");
     }
 
     // ====================== TỐI ƯU POPUP ======================
@@ -172,13 +199,6 @@ internal static class ShiftInvoiceProcessor
         await dateInput.PressAsync("Enter");
 
         await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-    }
-
-    private static async Task OpenShiftAsync(IPage page, string shift)
-    {
-        var ca = page.Locator($"a:has-text('{shift}')").First;
-        await ca.ClickAsync(new() { Timeout = 10000 });
-        await page.WaitForTimeoutAsync(MediumWaitMs);
     }
 
     private static async Task OpenShiftMenuAsync(IPage page)
