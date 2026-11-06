@@ -10,7 +10,7 @@ namespace QrLedgerReconciler.Services;
 /// <summary>
 /// Tự động clear công nợ tháng trên trang AR_DueDate_Prepare.
 /// Lặp qua từng khách: mở link ">>>>" (tab mới) → xử lý dialog alert (nếu có)
-/// → nhấn Lưu → đợi modal "Đã cập nhập chứng từ" → đóng tab → reload danh sách
+/// → nhấn Lưu → đóng tab → reload danh sách
 /// → lặp cho đến khi danh sách trống.
 ///
 /// Thời điểm clear tự tính: 23:58 ngày cuối tháng trước (không dùng
@@ -21,7 +21,6 @@ public class ClearDebtService
     private const string AccountCode = "131202";
     private const int PopupTimeoutMs = 15_000;
     private const int ClickTimeoutMs = 10_000;
-    private const int ModalWaitMs = 30_000;
     private const int AfterSaveWaitMs = 2_000;
     private const int AfterReloadWaitMs = 1_000;
 
@@ -323,18 +322,13 @@ public class ClearDebtService
             await detailPage.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
             await detailPage.WaitForTimeoutAsync(500); // Chờ dialog alert xuất hiện
 
-            // Nhấn Lưu (Ctrl-S).
+            // Nhấn Lưu (Ctrl-S). Chỉ cần nhấn Lưu là đã hoàn thành — không cần
+            // đợi modal "Đã cập nhập chứng từ"; đóng tab luôn rồi làm khách tiếp theo.
             await detailPage.ClickAsync("#savebtn");
             await detailPage.WaitForTimeoutAsync(AfterSaveWaitMs);
-
-            // Đợi modal "Đã cập nhập chứng từ" — tín hiệu lưu thành công.
-            var modal = detailPage.Locator("text=Đã cập nhập");
-            await modal.WaitForAsync(new() { Timeout = ModalWaitMs });
             status($"✅ Khách {customer.CustomerCode} đã lưu chứng từ.");
 
-            await detailPage.WaitForTimeoutAsync(1000);
-
-            // Đóng tab detail ngay khi modal hiện (không cần click nút Close trên modal).
+            // Đóng tab detail ngay sau khi Lưu.
             await detailPage.CloseAsync();
             await page.BringToFrontAsync();
         }
