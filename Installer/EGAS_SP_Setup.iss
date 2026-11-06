@@ -1,10 +1,10 @@
-#define MyAppName "HDBank QR Reconciler"
-#define MyAppVersion "1.0.1"
-#define MyAppPublisher "HDBank QR Reconciler"
-#define MyAppExeName "HDBank_QR_Reconciler.exe"
+#define MyAppName "EGAS SP"
+#define MyAppVersion "1.0"
+#define MyAppPublisher "EGAS SP"
+#define MyAppExeName "EGAS.exe"
 
 #define ProjectDir "C:\Users\Admin\Desktop\Code\QrLedgerReconciler"
-#define PublishDir ProjectDir + "\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
+#define PublishDir ProjectDir + "\bin\Publish"
 
 [Setup]
 
@@ -12,7 +12,7 @@
 ; BASIC INFORMATION
 ; ============================================================
 
-AppId={{8D6D6D5A-5C4D-4F39-9C76-QRLEDGER2026}}
+AppId={{6C0A8E4F-7B2D-4E1F-A3C9-2D5B8F1E6A74}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -24,7 +24,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 ; INSTALL LOCATION
 ; ============================================================
 
-DefaultDirName={autopf}\HDBank QR Reconciler
+DefaultDirName={autopf}\EGAS SP
 DefaultGroupName={#MyAppName}
 
 ; ============================================================
@@ -32,7 +32,7 @@ DefaultGroupName={#MyAppName}
 ; ============================================================
 
 OutputDir={#ProjectDir}\Installer\Output
-OutputBaseFilename=HDBank_QR_Reconciler_Setup_v{#MyAppVersion}
+OutputBaseFilename=EGAS_SP_Setup_v{#MyAppVersion}
 
 ; ============================================================
 ; ARCHITECTURE
@@ -65,10 +65,10 @@ Uninstallable=yes
 ; ============================================================
 
 VersionInfoVersion=1.0.0.0
-VersionInfoCompany=HDBank QR Reconciler
-VersionInfoDescription=Đối chiếu Sổ cái và QR tĩnh HDBank
-VersionInfoProductName=HDBank QR Reconciler
-VersionInfoProductVersion=1.0.0
+VersionInfoCompany=EGAS SP
+VersionInfoDescription=EGAS SP - Công cụ đối chiếu và xử lý nghiệp vụ EGAS
+VersionInfoProductName=EGAS SP
+VersionInfoProductVersion=1.0.0.0
 
 [Files]
 
@@ -89,7 +89,7 @@ Source: "{#PublishDir}\*"; \
 Name: "{autoprograms}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \
     WorkingDir: "{app}"; \
-    Comment: "Đối chiếu Sổ cái và QR tĩnh HDBank"
+    Comment: "EGAS SP - Công cụ đối chiếu và xử lý nghiệp vụ EGAS"
 
 ; ============================================================
 ; START MENU - UNINSTALL
@@ -105,7 +105,7 @@ Name: "{autoprograms}\Gỡ cài đặt {#MyAppName}"; \
 Name: "{autodesktop}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \
     WorkingDir: "{app}"; \
-    Comment: "Đối chiếu Sổ cái và QR tĩnh HDBank"
+    Comment: "EGAS SP - Công cụ đối chiếu và xử lý nghiệp vụ EGAS"
 
 [Run]
 
