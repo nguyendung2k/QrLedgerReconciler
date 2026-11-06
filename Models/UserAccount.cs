@@ -37,6 +37,19 @@ public static class AppFunctionExtensions
     /// <summary>Danh sách đầy đủ các chức năng theo thứ tự hiển thị cố định.</summary>
     public static IReadOnlyList<AppFunction> AllFunctions { get; } =
         (AppFunction[])Enum.GetValues(typeof(AppFunction));
+
+    /// <summary>Mô tả ngắn hiển thị trên hàng "chạy ẩn".</summary>
+    public static string HeadlessDescription(this AppFunction function) => function switch
+    {
+        AppFunction.GetLedger => "Lấy dữ liệu sổ cái trong chế độ chạy ẩn",
+        AppFunction.GetQr => "Lấy dữ liệu QR trong chế độ chạy ẩn",
+        AppFunction.Reconcile => "Đối chiếu dữ liệu trong chế độ chạy ẩn",
+        AppFunction.ClearShift => "Thực hiện Clear ca trong chế độ chạy ẩn",
+        AppFunction.PrintDebtInvoice => "In báo cáo công nợ trong chế độ chạy ẩn",
+        AppFunction.PrintShiftProductReport => "In bảng phân chia sản phẩm trong chế độ chạy ẩn",
+        AppFunction.ClearDebt => "Clear công nợ tháng trong chế độ chạy ẩn",
+        _ => string.Empty,
+    };
 }
 
 public sealed class UserAccount : INotifyPropertyChanged
@@ -51,7 +64,13 @@ public sealed class UserAccount : INotifyPropertyChanged
     public string UserName
     {
         get => _userName;
-        set => SetProperty(ref _userName, value);
+        set
+        {
+            if (EqualityComparer<string>.Default.Equals(_userName, value)) return;
+            _userName = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UserName)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Initial)));
+        }
     }
 
     public string Password
@@ -80,6 +99,10 @@ public sealed class UserAccount : INotifyPropertyChanged
 
     /// <summary>Tài khoản có được dùng chức năng này không.</summary>
     public bool CanUse(AppFunction function) => IsEnabled && Functions.Contains(function);
+
+    /// <summary>Chữ cái đầu cho avatar (ký tự đầu tên đăng nhập).</summary>
+    [JsonIgnore]
+    public string Initial => string.IsNullOrEmpty(UserName) ? "?" : UserName.Trim().Substring(0, 1).ToUpperInvariant();
 
     /// <summary>Số chức năng được cấp. Bỏ qua khi (de)serialize JSON.</summary>
     [JsonIgnore]

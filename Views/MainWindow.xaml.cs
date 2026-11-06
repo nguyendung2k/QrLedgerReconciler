@@ -18,8 +18,10 @@ public partial class MainWindow : Window
         var settings = SettingsStore.Load();
 
         _viewModel = new MainViewModel(
-            message => MessageBox.Show(message, "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information),
-            (title, message) => MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question),
+            message => Controls.ModernDialog.ShowInfo(this, "Thông báo", message),
+            (title, message) => Controls.ModernDialog.ShowConfirm(this, title, message)
+                ? MessageBoxResult.Yes
+                : MessageBoxResult.No,
             dialogService,
             accountStore,
             settings,

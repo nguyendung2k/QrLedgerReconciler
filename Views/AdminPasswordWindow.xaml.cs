@@ -46,8 +46,7 @@ public partial class AdminPasswordWindow : Window
 
         if (_attempts >= 3)
         {
-            MessageBox.Show("Sai mật khẩu quá 3 lần.", "Thông báo",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            Controls.ModernDialog.ShowWarning(this, "Thông báo", "Sai mật khẩu quá 3 lần.");
             DialogResult = false;
             return;
         }

@@ -22,6 +22,22 @@ public sealed class FunctionOption : INotifyPropertyChanged
     public AppFunction Function { get; }
     public string DisplayName => Function.DisplayName();
 
+    /// <summary>Mô tả ngắn của chức năng (dùng cho hàng "chạy ẩn").</summary>
+    public string HeadlessDescription => Function.HeadlessDescription();
+
+    /// <summary>Icon Segoe MDL2 Assets của chức năng (hiển thị cạnh tên quyền).</summary>
+    public string IconGlyph => Function switch
+    {
+        AppFunction.GetLedger => "",            // book / sổ
+        AppFunction.GetQr => "",                // QR code
+        AppFunction.Reconcile => "",            // balance / đối chiếu
+        AppFunction.ClearShift => "",           // gear
+        AppFunction.PrintDebtInvoice => "",     // printer
+        AppFunction.PrintShiftProductReport => "", // table/grid
+        AppFunction.ClearDebt => "",            // calendar với X
+        _ => "",
+    };
+
     private bool _isChecked;
     public bool IsChecked
     {
@@ -31,8 +47,12 @@ public sealed class FunctionOption : INotifyPropertyChanged
             if (_isChecked == value) return;
             _isChecked = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsChecked)));
+            OnChanged?.Invoke();
         }
     }
+
+    /// <summary>Bắn khi người dùng đổi trạng thái checkbox (dùng để đánh dấu bẩn).</summary>
+    public Action? OnChanged { get; set; }
 }
 
 /// <summary>
@@ -57,6 +77,12 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
     /// <summary>Checkbox "chạy ẩn" cho tất cả chức năng đang có.</summary>
     public ObservableCollection<FunctionOption> HeadlessOptions { get; } = new();
 
+    /// <summary>Số quyền đang bật của tài khoản đang sửa (ví dụ "4/7 quyền").</summary>
+    public int CheckedFunctionCount => FunctionOptions.Count(o => o.IsChecked);
+
+    /// <summary>True khi có thay đổi chưa lưu (để hiện cảnh báo và hỏi khi đóng).</summary>
+    public bool IsDirty { get; private set; }
+
     private UserAccount? _selectedAccount;
     public UserAccount? SelectedAccount
     {
@@ -76,8 +102,7 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
 
             if (!wasNew || value is not null) LoadEditor(value);
 
-            CommandManager.InvalidateRequerySuggested();
-        }
+            CommandManager.InvalidateRequerySuggested();        }
     }
 
     // ----- Trạng thái editor -----
@@ -92,28 +117,28 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
     public string EditUserName
     {
         get => _editUserName;
-        set => SetProperty(ref _editUserName, value);
+        set { if (SetProperty(ref _editUserName, value)) MarkDirty(); }
     }
 
     private string _editPassword = string.Empty;
     public string EditPassword
     {
         get => _editPassword;
-        set => SetProperty(ref _editPassword, value);
+        set { if (SetProperty(ref _editPassword, value)) MarkDirty(); }
     }
 
     private string _editDisplayName = string.Empty;
     public string EditDisplayName
     {
         get => _editDisplayName;
-        set => SetProperty(ref _editDisplayName, value);
+        set { if (SetProperty(ref _editDisplayName, value)) MarkDirty(); }
     }
 
     private bool _editIsEnabled = true;
     public bool EditIsEnabled
     {
         get => _editIsEnabled;
-        set => SetProperty(ref _editIsEnabled, value);
+        set { if (SetProperty(ref _editIsEnabled, value)) MarkDirty(); }
     }
 
     // ----- Commands -----
@@ -124,6 +149,7 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
     public ICommand CheckAllCommand { get; }
     public ICommand UncheckAllCommand { get; }
     public ICommand SaveHeadlessCommand { get; }
+    public ICommand RestoreDefaultsCommand { get; }
 
     public AccountManagerViewModel(
         AccountStore store,
@@ -138,11 +164,12 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
 
         AddCommand = new RelayCommand(ExecuteAdd);
         DeleteCommand = new RelayCommand(ExecuteDelete, () => _selectedAccount is not null && !_isNew);
-        SaveCommand = new RelayCommand(ExecuteSave, () => IsEditing);
+        SaveCommand = new RelayCommand(ExecuteSave, () => IsEditing && IsDirty);
         CancelCommand = new RelayCommand(ExecuteCancel, () => IsEditing);
         CheckAllCommand = new RelayCommand(() => SetAllFunctions(true));
         UncheckAllCommand = new RelayCommand(() => SetAllFunctions(false));
         SaveHeadlessCommand = new RelayCommand(ExecuteSaveHeadless);
+        RestoreDefaultsCommand = new RelayCommand(ExecuteRestoreDefaults, () => IsEditing);
 
         // Chọn sẵn tài khoản đầu tiên cho tiện thao tác.
         if (Accounts.Count > 0)
@@ -156,7 +183,11 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
         HeadlessOptions.Clear();
 
         foreach (var function in SettingsStore.HeadlessCandidatesList)
-            HeadlessOptions.Add(new FunctionOption(function, _settings.IsHeadless(function)));
+        {
+            var option = new FunctionOption(function, _settings.IsHeadless(function));
+            option.OnChanged = MarkHeadlessDirty;
+            HeadlessOptions.Add(option);
+        }
     }
 
     private void ExecuteSaveHeadless()
@@ -165,6 +196,7 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
             _settings.SetHeadless(option.Function, option.IsChecked);
 
         _settings.Save();
+        ClearDirty();
         _showMessage("Đã lưu cấu hình chạy ẩn.");
     }
 
@@ -180,32 +212,41 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
 
         BuildFunctionOptions(new HashSet<AppFunction>());
 
+        ClearDirty();
+
         OnPropertyChanged(nameof(SelectedAccount));
         OnPropertyChanged(nameof(IsEditing));
         OnPropertyChanged(nameof(EditorTitle));
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void ExecuteDelete()
+    private void ExecuteDelete() => DeleteAccount(_selectedAccount);
+
+    /// <summary>Xoá một tài khoản cụ thể (dùng cho menu ngữ cảnh ở từng dòng danh sách).</summary>
+    public void DeleteAccount(UserAccount? account)
     {
-        if (_selectedAccount is null) return;
+        if (account is null) return;
 
         if (_showConfirm("Xác nhận",
-                $"Xoá tài khoản {_selectedAccount.UserName}?\n\nThao tác không thể hoàn tác.")
+                $"Xoá tài khoản {account.UserName}?\n\nThao tác không thể hoàn tác.")
             != MessageBoxResult.Yes)
             return;
 
-        var removed = _selectedAccount;
-        Accounts.Remove(removed);
+        Accounts.Remove(account);
+        _store.Save();
 
-        if (!_isNew)
+        // Chỉ nạp lại editor khi vừa xoá đúng tài khoản đang sửa; xoá dòng khác không
+        // được làm mất nội dung đang nhập (kể cả bản nháp "thêm tài khoản mới").
+        if (ReferenceEquals(_selectedAccount, account))
         {
+            _isNew = false;
             _selectedAccount = Accounts.Count > 0 ? Accounts[0] : null;
             OnPropertyChanged(nameof(SelectedAccount));
-            LoadEditor(_selectedAccount);
+            LoadEditor(_selectedAccount);   // nạp lại và xoá cờ dirty
+            OnPropertyChanged(nameof(IsEditing));
+            OnPropertyChanged(nameof(EditorTitle));
         }
 
-        _store.Save();
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -279,7 +320,8 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
 
         _store.Save();
 
-        OnPropertyChanged(nameof(IsEditing));
+        IsDirty = false;
+        OnPropertyChanged(nameof(IsDirty));
         OnPropertyChanged(nameof(EditorTitle));
         _showMessage("Đã lưu tài khoản.");
         CommandManager.InvalidateRequerySuggested();
@@ -297,6 +339,18 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
         CommandManager.InvalidateRequerySuggested();
     }
 
+    /// <summary>
+    /// Khôi phục mặc định: bỏ trạng thái "thêm mới", quay về tài khoản đầu danh
+    /// sách và nạp lại toàn bộ trường editor từ dữ liệu đã lưu (bỏ mọi thay đổi chưa lưu).
+    /// </summary>
+    private void ExecuteRestoreDefaults()
+    {
+        ExecuteCancel();
+    }
+
+    /// <summary>Hủy mọi thay đổi chưa lưu trong editor, quay về dữ liệu đã lưu.</summary>
+    public void DiscardChanges() => ExecuteCancel();
+
     private void LoadEditor(UserAccount? account)
     {
         if (account is null)
@@ -306,6 +360,7 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
             EditDisplayName = string.Empty;
             EditIsEnabled = true;
             FunctionOptions.Clear();
+            ClearDirty();
             return;
         }
 
@@ -315,6 +370,7 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
         EditIsEnabled = account.IsEnabled;
 
         BuildFunctionOptions(account.Functions);
+        ClearDirty();
     }
 
     private void BuildFunctionOptions(HashSet<AppFunction> granted)
@@ -322,7 +378,11 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
         FunctionOptions.Clear();
 
         foreach (var function in AppFunctionExtensions.AllFunctions)
-            FunctionOptions.Add(new FunctionOption(function, granted.Contains(function)));
+        {
+            var option = new FunctionOption(function, granted.Contains(function));
+            option.OnChanged = MarkDirty;
+            FunctionOptions.Add(option);
+        }
     }
 
     private void SetAllFunctions(bool value)
@@ -331,11 +391,32 @@ public sealed class AccountManagerViewModel : INotifyPropertyChanged
             option.IsChecked = value;
     }
 
-    private void SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = "")
+    // ----- Theo dõi thay đổi chưa lưu -----
+    private void MarkDirty()
     {
-        if (EqualityComparer<T>.Default.Equals(field, value)) return;
+        IsDirty = true;
+        OnPropertyChanged(nameof(IsDirty));
+
+        // Checkbox quyền thay đổi → đếm lại số quyền đã chọn ở nhãn "Đã chọn: y".
+        OnPropertyChanged(nameof(CheckedFunctionCount));
+
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private void MarkHeadlessDirty() => MarkDirty();
+
+    private void ClearDirty()
+    {
+        IsDirty = false;
+        OnPropertyChanged(nameof(IsDirty));
+    }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = "")
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
         field = value;
         OnPropertyChanged(propertyName);
+        return true;
     }
 
     private void OnPropertyChanged([CallerMemberName] string propertyName = "")

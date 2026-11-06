@@ -38,13 +38,13 @@ public partial class DateTimePickerWindow : Window
     {
         if (Calendar.SelectedDate == null)
         {
-            MessageBox.Show("Vui lòng chọn ngày.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Controls.ModernDialog.ShowWarning(this, "Thông báo", "Vui lòng chọn ngày.");
             return;
         }
 
         if (HourCombo.SelectedItem == null || MinuteCombo.SelectedItem == null)
         {
-            MessageBox.Show("Vui lòng chọn giờ và phút.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Controls.ModernDialog.ShowWarning(this, "Thông báo", "Vui lòng chọn giờ và phút.");
             return;
         }
 

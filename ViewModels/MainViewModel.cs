@@ -136,6 +136,9 @@ public class MainViewModel : INotifyPropertyChanged
     /// <summary>Nút "Dừng toàn bộ" luôn hiển thị, chỉ bật khi có chức năng đang chạy.</summary>
     public bool CanStopAll => IsRunning;
 
+    /// <summary>Chỉ hiện nút "Dừng tiến trình" khi có chức năng đang chạy.</summary>
+    public bool ShowStopAll => IsRunning;
+
     // Tạm dừng/Tiếp tục/Kết thúc chỉ áp dụng cho In công nợ.
     public bool IsPrinting => _run?.Function == AppFunction.PrintDebtInvoice;
     public bool IsPrintPaused => _run?.IsPaused == true;
@@ -165,6 +168,7 @@ public class MainViewModel : INotifyPropertyChanged
         Notify(nameof(SelectedFunctionName));
         Notify(nameof(HasSelectedFunction));
         Notify(nameof(HasNoSelectedFunction));
+        Notify(nameof(HasNoFunctionGrants));
         Notify(nameof(ShowsDateRange));
         Notify(nameof(ShowCustomerFields));
         Notify(nameof(ShowPrintControls));
@@ -174,8 +178,12 @@ public class MainViewModel : INotifyPropertyChanged
 
     public bool HasSelectedFunction => _selectedFunction is not null;
 
-    /// <summary>Tài khoản không có quyền chức năng nào (hoặc chưa có tài khoản).</summary>
+    /// <summary>Chưa chọn chức năng nào trong menu trái.</summary>
     public bool HasNoSelectedFunction => _selectedFunction is null;
+
+    /// <summary>Tài khoản đang chọn thật sự không được cấp quyền chức năng nào
+    /// (khác với "chưa chọn" — tài khoản có quyền nhưng người dùng chưa bấm chọn).</summary>
+    public bool HasNoFunctionGrants => _selectedAccount is not null && Functions.Count == 0;
 
     private AppFunction? SelectedAppFunction => _selectedFunction?.Function;
 
@@ -192,7 +200,7 @@ public class MainViewModel : INotifyPropertyChanged
     /// <summary>
     /// Nạp lại menu chức năng theo quyền của tài khoản đang chọn.
     /// Giữ nguyên chức năng đang chọn nếu tài khoản mới vẫn có quyền đó,
-    /// ngược lại chọn chức năng đầu tiên.
+    /// ngược lại bỏ chọn để người dùng tự chọn (không tự chọn mặc định).
     /// </summary>
     private void RefreshFunctionList()
     {
@@ -205,8 +213,10 @@ public class MainViewModel : INotifyPropertyChanged
                 Functions.Add(new FunctionItem(function));
         }
 
+        // Nếu chức năng trước đó vẫn được cấp quyền thì giữ nguyên, còn không thì
+        // không chọn mặc định (gán null) để màn hình chính hiện "chưa chọn chức năng".
         var keep = Functions.FirstOrDefault(f => f.Function == previous);
-        SetSelectedFunctionSilently(keep ?? Functions.FirstOrDefault());
+        SetSelectedFunctionSilently(keep);
     }
 
     private void SetSelectedFunctionSilently(FunctionItem? item)
@@ -271,15 +281,28 @@ public class MainViewModel : INotifyPropertyChanged
 
         ReloadAccounts();
 
-        // Chọn tài khoản đầu tiên đang hoạt động (nếu có) để không phải chọn tay.
-        SelectedAccount = Accounts.Count > 0 ? Accounts[0] : null;
+        /*  Mặc định chọn tài khoản "2112220" nếu có; nếu không thì lấy tài khoản đầu
+            tiên đang hoạt động. Không chọn chức năng nào để người dùng tự chọn.  */
+        _selectedAccount = null;
+        SelectedAccount = FindDefaultAccount();
 
-        // Không có tài khoản nào thì setter ở trên bỏ qua (null == null),
-        // nên luôn gọi tường minh để menu chức năng được khởi tạo (rỗng).
+        // Không có tài khoản nào thì dựng menu rỗng; có tài khoản thì menu được
+        // nạp ở setter trên và được giữ không chọn chức năng nào.
         RefreshFunctionList();
 
         Notify(nameof(SelectedAccount));
     }
+
+    /// <summary>
+    /// Tài khoản mặc định khi mở app: ưu tiên "2112220", sau đó tới tài khoản đầu
+    /// tiên đang hoạt động; không có tài khoản nào thì trả về null.
+    /// </summary>
+    private UserAccount? FindDefaultAccount()
+        => Accounts.FirstOrDefault(a =>
+               string.Equals(a.UserName, DefaultAccountUserName, StringComparison.OrdinalIgnoreCase))
+           ?? (Accounts.Count > 0 ? Accounts[0] : null);
+
+    private const string DefaultAccountUserName = "2112220";
 
     private void ReloadAccounts()
     {
@@ -308,12 +331,7 @@ public class MainViewModel : INotifyPropertyChanged
         // quyền) — nếu giữ nguyên reference thì setter bỏ qua và nút không cập nhật.
         _selectedAccount = null;
         ReloadAccounts();
-        SelectedAccount = Accounts.Count > 0 ? Accounts[0] : null;
-
-        Notify(nameof(SelectedAccount));
-        Notify(nameof(CanPrintDebtInvoice));
-        Notify(nameof(CanEditCustomerCode));
-        Notify(nameof(CanClearDebt));
+        SelectedAccount = FindDefaultAccount();
 
         // Quyền có thể vừa thay đổi → dựng lại menu chức năng.
         RefreshFunctionList();
@@ -571,6 +589,7 @@ public class MainViewModel : INotifyPropertyChanged
         _run = control;
         IsBusy = true;
         StatusText = initialStatus;
+        HasResults = false;   // Ẩn kết quả cũ khi bắt đầu chạy chức năng mới
         NotifyRunStateChanged();
 
         // Trạng thái cuối cùng phải phản ánh đúng kết quả. Trước đây khi lỗi
@@ -625,6 +644,7 @@ public class MainViewModel : INotifyPropertyChanged
         Notify(nameof(CanEditInputs));
         Notify(nameof(CanEditCustomerCode));
         Notify(nameof(CanStopAll));
+        Notify(nameof(ShowStopAll));
         Notify(nameof(ShowPrintControls));
         CommandManager.InvalidateRequerySuggested();
     }
